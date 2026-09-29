@@ -15,13 +15,15 @@
     "implement": {
       "agent": "ClaudeC-Fable",
       "command": "claude",
-      "args": ["-p", "{prompt}", "--dangerously-skip-permissions", "--output-format", "text"],
+      "model": "claude-fable-5-1",
+      "args": ["-p", "{prompt}", "--model", "{model}", "--dangerously-skip-permissions", "--output-format", "text"],
       "prompt": "scripts/orchestrate/prompts/implement.md"
     },
     "review": {
       "agent": "ClaudeC-Fable",
       "command": "claude",
-      "args": ["-p", "{prompt}", "--dangerously-skip-permissions", "--output-format", "text"],
+      "model": "claude-fable-5-1",
+      "args": ["-p", "{prompt}", "--model", "{model}", "--dangerously-skip-permissions", "--output-format", "text"],
       "prompt": "scripts/orchestrate/prompts/review.md"
     }
   }

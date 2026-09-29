@@ -28,7 +28,7 @@ AgentsOutput/orchestrator/<UTC ts>-<task>/   per-run logs and rendered prompts (
 `roles.json` has three parts:
 - `pipeline`: `start` role and an `after` map (`implement → review`, `review → implement`).
 - `limits`: `maxRounds`, `maxRoundsWithoutCodeChange`, `roundTimeoutMinutes`.
-- `roles.<name>`: `agent` (the agent name used in commits and handoffs), `command`, `args` (with a `{prompt}` placeholder) and `prompt` (template path). A Claude role calls `claude -p` with permission checks bypassed; a Gemini role calls `gemini -p` with its auto-approve flag.
+- `roles.<name>`: `agent` (the agent name used in commits and handoffs), `command`, `model`, `args` and `prompt` (template path). `args` holds the CLI's own flags with two placeholders the driver fills: `{prompt}` (the one-line pointer to the rendered prompt) and `{model}` (the role's `model`). The model flag stays in `args` because each CLI spells it differently: `claude -p {prompt} --model {model} --dangerously-skip-permissions`, `gemini -p {prompt} -m {model} --yolo`. A role without a `model` field must not reference `{model}`; the driver refuses to start otherwise. The chosen model is printed in every round's summary line.
 
 ## One round
 1. Record `HEAD` and require a clean working tree.

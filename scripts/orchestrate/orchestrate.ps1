@@ -158,12 +158,20 @@ while ($round -lt $MaxRounds) {
     $promptPath = Join-Path $runDir "$roundTag.prompt.md"
     [System.IO.File]::WriteAllText($promptPath, $prompt, (New-Object System.Text.UTF8Encoding($false)))
 
+    # Model: each CLI spells its flag differently, so roles.json puts the flag in args and
+    # the driver only fills the {model} placeholder from the role's "model" field.
+    $model = ''
+    if ($roleCfg.PSObject.Properties.Name -contains 'model') { $model = [string]$roleCfg.model }
+    $wantsModel = @($roleCfg.args | Where-Object { ([string]$_).Contains('{model}') }).Count -gt 0
+    if ($wantsModel -and -not $model) { throw "Role '$role' uses {model} in args but has no 'model' field in $Config" }
+
     $pointer = "Read the file $promptPath and follow the instructions in it exactly."
-    $argItems = @($roleCfg.args | ForEach-Object { ([string]$_).Replace('{prompt}', $pointer) })
+    $argItems = @($roleCfg.args | ForEach-Object { ([string]$_).Replace('{prompt}', $pointer).Replace('{model}', $model) })
     $argString = ConvertTo-ArgumentString $argItems
     $exe = (Get-Command $roleCfg.command -ErrorAction Stop).Source
 
-    Write-Summary "## Round $round : $role ($agent)"
+    $modelLabel = if ($model) { $model } else { 'CLI default' }
+    Write-Summary "## Round $round : $role ($agent, model: $modelLabel)"
     Write-Summary "Start: $startHead"
     Write-Summary "Command: $exe $argString"
 

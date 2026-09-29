@@ -23,6 +23,7 @@ Not yet verified: the paths that need a committing agent (`done`, `blocked`, sta
 ## Done
 - Design agreed with Alex and recorded in `docs/orchestration.md`, 25d1652.
 - `scripts/orchestrate/orchestrate.ps1`, `roles.json`, `prompts/_common.md`, `prompts/implement.md`, `prompts/review.md`; run command and a testing section added to the design doc; `AGENTS.md` repo map links to it.
+- Per-role `model` field (asked by Alex), filled into a `{model}` placeholder in `args` so each CLI keeps its own flag; missing model with `{model}` in args is a startup error; the model is shown in each round's summary line. Verified by dry run in the scratch clone.
 
 ## Tried and rejected
 - Agent triggers the next agent itself (Alex's first framing): rejected in favour of an external driver loop, because a crashed or forgetful agent silently breaks the chain and a hook firing inside a live session is fragile. Alex agreed.
