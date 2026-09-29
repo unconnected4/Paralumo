@@ -1,0 +1,28 @@
+{
+  "pipeline": {
+    "start": "implement",
+    "after": {
+      "implement": "review",
+      "review": "implement"
+    }
+  },
+  "limits": {
+    "maxRounds": 8,
+    "maxRoundsWithoutCodeChange": 2,
+    "roundTimeoutMinutes": 90
+  },
+  "roles": {
+    "implement": {
+      "agent": "ClaudeC-Fable",
+      "command": "claude",
+      "args": ["-p", "{prompt}", "--dangerously-skip-permissions", "--output-format", "text"],
+      "prompt": "scripts/orchestrate/prompts/implement.md"
+    },
+    "review": {
+      "agent": "ClaudeC-Fable",
+      "command": "claude",
+      "args": ["-p", "{prompt}", "--dangerously-skip-permissions", "--output-format", "text"],
+      "prompt": "scripts/orchestrate/prompts/review.md"
+    }
+  }
+}

@@ -9,7 +9,7 @@ Vocabulary app: dictionary lookup with per-sense saving and spaced-repetition pr
 - `web/`: React + Vite + TypeScript SPA. Commands and rules: [web/AGENTS.md](web/AGENTS.md)
 - `e2e/`: Playwright tests that run against web and backend together
 - `docs/`: shared docs covering the plan, engineering conventions, API contract and decisions. Agent chaining: [docs/orchestration.md](docs/orchestration.md)
-- `scripts/orchestrate/`: driver that runs agents in an implement/review loop (planned, see `docs/orchestration.md`)
+- `scripts/orchestrate/`: driver that runs agents in an implement/review loop. How and why: [docs/orchestration.md](docs/orchestration.md)
 - `docker-compose.yml`: local infrastructure only (Postgres)
 - `.github/workflows/`: one pipeline per project, filtered by path
 

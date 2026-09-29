@@ -1,6 +1,6 @@
 # Agent orchestration
 
-How agents are chained without a human triggering each one. Status: designed, driver not yet built (see `docs/handoff/active/agent-orchestration.md`).
+How agents are chained without a human triggering each one. Driver: `scripts/orchestrate/orchestrate.ps1`. Task history: `docs/handoff/active/agent-orchestration.md`.
 
 ## Shape (by Alex, 2026-09-29)
 - A fixed **implement ↔ review** pipeline is enough for the first version. Per-task routing comes later if needed.
@@ -53,11 +53,17 @@ The templates are short because `AGENTS.md` already tells every agent how to sta
 
 ## Running
 ```
-powershell -File scripts/orchestrate/orchestrate.ps1 -Task step1-backend
+powershell -ExecutionPolicy Bypass -File scripts/orchestrate/orchestrate.ps1 -Task step1-backend
 ```
+`-ExecutionPolicy Bypass` applies to that one process only; the script is unsigned and the default policy refuses it. Other switches: `-DryRun` renders the first prompt and prints the command without running an agent, `-StartRole review` starts with a review, `-MaxRounds N` and `-Config <path>` override the config.
+
 Requirements: a clean working tree, an existing `docs/handoff/active/<task>.md` with Goal and Next step filled in (by a human or an earlier session), and the CLIs from `roles.json` on `PATH`. The driver prints a per-round summary and ends with the stop reason, the commit range, and any new `For Alex:` questions.
 
 ## Limits of the first version
 - Sequential only. Parallel roles would need one worktree per agent; not planned until there is a reason.
 - Only agents with a CLI can be triggered. Desktop-app agents (Cowork, Antigravity) stay manual; the driver's answer for them is "stop and tell Alex".
 - No pushing. The driver works on the local branch; Alex pushes.
+- A killed round (timeout) kills the CLI process only. A `.cmd` shim such as npm's `gemini` may leave its child running.
+
+## Testing the driver
+Stop paths are tested by pointing `-Config` at a copy of `roles.json` whose role commands are stand-ins, run in a scratch clone so no test commit lands in the real history. Verified so far: dry run, a role that exits without committing (`cmd.exe /c echo`), a role that exits non-zero (`cmd.exe /c exit 3`). Not yet exercised with a real or stand-in committing agent: the `done`, `blocked`, stale `last_commit` and going-in-circles paths, and the archived-handoff detection. See the handoff's Next step.
