@@ -4,8 +4,8 @@ title: Step 1 — Backend implementation and data model, based on the Step 0 web
 status: in-progress
 branch: main
 started: 2026-09-26T21:00:46Z
-last_updated: 2026-09-26T21:00:46Z
-last_commit: 67eb91b
+last_updated: 2026-10-26T16:18:51Z
+last_commit: 02f0e94
 agents: [ClaudeC-Fable]
 related_decisions: [intent.md, docs/plan.md, backend/intent.md, web/intent.md, docs/handoff/archive/handoff-20260926T195210Z.md]
 ---
@@ -13,9 +13,9 @@ related_decisions: [intent.md, docs/plan.md, backend/intent.md, web/intent.md, d
 # Step 1 — Backend implementation and data model, based on the Step 0 web UI
 
 ## Goal and acceptance
-Implement the backend the Step 0 web UI proved it needs (`docs/plan.md` → Step 1): scaffold `backend/` with `uv`, FastAPI, SQLAlchemy 2, Alembic and Postgres; implement the endpoints the interim client in `web/src/api/client.ts` calls; export `docs/api/openapi.json`; replace the interim client with the generated one.
+Implement the backend the Step 0 web UI proved it needs (`docs/plan.md` → Step 1): scaffold `backend/` as a Java project (Gradle, Spring Boot, Spring Data JPA, Flyway, Postgres); implement the endpoints the interim client in `web/src/api/client.ts` calls; export `docs/api/openapi.json`; replace the interim client with the generated one.
 
-Acceptance (P24, `docs/plan.md`): `npm run gen:api` replaces the interim module and `npm run typecheck` passes with pages, hooks and MSW handlers unchanged apart from imports. Backend lint, types, unit and integration tests pass with no warnings.
+Acceptance (P24, `docs/plan.md`): `npm run gen:api` replaces the interim module and `npm run typecheck` passes with pages, hooks and MSW handlers unchanged apart from imports. Backend `./gradlew check` (format, Error Prone + NullAway, unit and integration tests) passes with no warnings.
 
 ## Current state
 Not started. This file was opened by the Step 0 review (ClaudeC-Fable, 2026-09-26) to hold the review's inputs for Step 1. The Step 0 web UI is the contract: read `web/src/api/types.ts`, `web/src/api/client.ts` and `web/src/mocks/handlers.ts` first; the handlers document every status code the UI relies on.
@@ -33,7 +33,8 @@ Contract as the web UI uses it today:
 - Nothing yet.
 
 ## Decisions made during this task
-- None yet. Step 0 decisions that bind Step 1: public `sense_id` is an opaque deterministic string (`backend/intent.md`); auth contract shape differs from `fastapi-users` defaults (`docs/plan.md` Step 1); the sample words "run", "bank", "light" must exist in the fake provider because the web UI offers them as shortcuts (`web/intent.md`).
+- Backend is Java, not FastAPI (by Alex, 2026-10-26): "backend is going to be implemented in Java." Alex picked Spring Boot, Gradle with the Kotlin DSL, and Spring Data JPA + Flyway. Stack, layout and commands are in `backend/AGENTS.md` and `backend/intent.md`.
+- Step 0 decisions that bind Step 1: public `sense_id` is an opaque deterministic string (`backend/intent.md`); auth contract shape differs from Spring Security defaults (`docs/plan.md` Step 1); the sample words "run", "bank", "light" must exist in the fake provider because the web UI offers them as shortcuts (`web/intent.md`).
 
 ## Open questions
 - For Alex: should the ✓ "Saved" badge on the search page toggle back to unsave? Today it is static; unsaving is only possible from "My words". The lookup response carries `saved: bool` but not the card id, so unsaving from search needs either a `card_id` on saved senses or a delete-by-sense endpoint. This changes the Step 1 contract, so it is cheaper to decide before the backend exists. Not blocking: Step 1 can implement the current contract and add either later.
@@ -42,10 +43,11 @@ Contract as the web UI uses it today:
 - Next agent: `web/intent.md` says the audio button feature-detects "and voice check", but `AudioButton.tsx` only checks `'speechSynthesis' in window` (voices load asynchronously in Chrome, so a synchronous voice check would hide the button wrongly). Either implement a proper asynchronous check or drop the words from the intent. Not a Step 1 blocker.
 
 ## Next step
-Scaffold `backend/` following `backend/AGENTS.md` and `docs/plan.md` Step 1, starting with the fake dictionary provider containing at least "run", "bank" and "light" in the shape of `web/src/mocks/fixtures.ts`, then the routes above, then the OpenAPI export and `npm run gen:api`.
+Scaffold `backend/` following `backend/AGENTS.md` and `docs/plan.md` Step 1: Gradle wrapper, version catalog on current majors, Spotless, Error Prone + NullAway and `-Werror` first, so the no-warnings rule holds from the first commit. Then the fake dictionary provider containing at least "run", "bank" and "light" in the shape of `web/src/mocks/fixtures.ts`, then the routes above, then the OpenAPI export and `npm run gen:api`.
 
 ## Session log
 - 2026-09-26T21:00:46Z ClaudeC-Fable: Reviewed Step 0 (commits 3dd5343..67eb91b); fixed URL-driven search, the mock-mode flag, ApiError, labelled auth inputs, return-after-sign-in, strict MSW in tests; opened this handoff with the contract summary and open questions. Commit: see `git log --grep="Agent: ClaudeC-Fable"`.
+- 2026-10-26T16:18:51Z ClaudeC-Fable: Switched the backend plan from FastAPI to Java (Spring Boot, Gradle, JPA + Flyway) at Alex's request; rewrote backend/AGENTS.md and backend/intent.md and updated shared docs. No code yet.
 
 ## Outcome
 <!-- Filled in only when archiving. -->

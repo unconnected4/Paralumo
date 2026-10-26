@@ -5,7 +5,7 @@ Shared instructions for every coding agent working on this repo (Claude, Codex, 
 Vocabulary app: dictionary lookup with per-sense saving and spaced-repetition practice. English→Russian is only the first language pair, used to stabilise the project skeleton. Product intent and build order: [intent.md](intent.md).
 
 ## Repo map
-- `backend/`: FastAPI JSON API. Commands and rules: [backend/AGENTS.md](backend/AGENTS.md)
+- `backend/`: Spring Boot (Java) JSON API. Commands and rules: [backend/AGENTS.md](backend/AGENTS.md)
 - `web/`: React + Vite + TypeScript SPA. Commands and rules: [web/AGENTS.md](web/AGENTS.md)
 - `e2e/`: Playwright tests that run against web and backend together
 - `docs/`: shared docs covering the plan, engineering conventions, API contract and decisions. Agent chaining: [docs/orchestration.md](docs/orchestration.md)

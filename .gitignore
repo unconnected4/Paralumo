@@ -3,15 +3,16 @@
 .env.*
 !.env.example
 
-# Python
-__pycache__/
-*.py[cod]
-.venv/
-.pytest_cache/
-.mypy_cache/
-.ruff_cache/
-.coverage
-htmlcov/
+# Java / Gradle
+.gradle/
+build/
+*.class
+# VS Code Java extension output
+backend/bin/
+.classpath
+.project
+.settings/
+.factorypath
 
 # Node / web
 node_modules/

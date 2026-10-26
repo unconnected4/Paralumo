@@ -15,7 +15,7 @@ Build order and step details: [intent.md](intent.md#architecture--build-order) a
 | Step | What | State |
 |------|------|-------|
 | 0 | Web UI prototype in `web/`: search, sense cards with "+"/✓, "My words", sign-in, all against a local mock API (MSW) | **Done** |
-| 1 | Backend in `backend/`: FastAPI + Postgres, auth, cards, OpenAPI contract, generated web client | Next. Handoff: [docs/handoff/active/step1-backend.md](docs/handoff/active/step1-backend.md) |
+| 1 | Backend in `backend/`: Java (Spring Boot) + Postgres, auth, cards, OpenAPI contract, generated web client | Next. Handoff: [docs/handoff/active/step1-backend.md](docs/handoff/active/step1-backend.md) |
 | 2 | Dictionary provider integration (Yandex first, behind a provider interface) | Not started |
 | 3 | "Match the words" game | Not started |
 | 4 | Android app | Later |
@@ -44,6 +44,6 @@ Sign in with the seeded account `learner@example.com` / `password123`, or regist
 ```bash
 docker compose up -d                                   # Postgres
 cp backend/.env.example backend/.env                   # then edit
-cd backend && uv sync && uv run alembic upgrade head && uv run uvicorn app.main:app --reload
+cd backend && ./gradlew bootRun                       # http://localhost:8000, migrations run on start
 cd web && npm ci && npm run dev                        # http://localhost:5173
 ```

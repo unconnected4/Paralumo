@@ -4,7 +4,7 @@ Product-level intent and cross-cutting decisions. Project-specific intent lives 
 
 ## Architecture / build order
 0. Web UI implementation (first, by Alex): implement the web SPA (search, sense cards with "+/✓", "My words") with mock data directly in `web/`. Do not scaffold anything in `backend/` yet. Based on the implemented web UI, we will implement the backend.
-1. Shared backend: multi-user, word/sense storage, SRS data model, FastAPI implementation of the contract proven by the Web UI.
+1. Shared backend: multi-user, word/sense storage, SRS data model, Java (Spring Boot) implementation of the contract proven by the Web UI.
 2. Translator-dictionary integration: connect web to live/fake backend provider.
 3. "Match the words" game, built against real per-user vocabulary data from step 2.
 4. Android after web is stable (a third project alongside `backend/` and `web/`)
@@ -21,7 +21,7 @@ Product-level intent and cross-cutting decisions. Project-specific intent lives 
 - **The match game only lightly affects the review schedule.** Matching tests recognition and can be solved by elimination, which makes it a weak memory signal.
 - **Separate delivery:** backend and web each have their own pipeline and deploy independently from the same repo.
 
-Stack choices per project: [backend](backend/intent.md) (FastAPI + SQLAlchemy + Alembic + Postgres) and [web](web/intent.md) (React + Vite + TypeScript).
+Stack choices per project: [backend](backend/intent.md) (Java: Spring Boot + Spring Data JPA + Flyway + Postgres, by Alex) and [web](web/intent.md) (React + Vite + TypeScript).
 
 ## Open questions
 - Yandex integration (deferred until after the first backend with mocked functionality, by Alex): key availability and terms. Known so far: the [terms](https://yandex.com/legal/dictionary_api/) allow only temporary caching and forbid permanently storing the data, cap use at 10,000 requests/day per key, and require a "Powered by Yandex.Dictionary" link on every page showing the data. This matters for saved cards, which keep a copy of the sense.

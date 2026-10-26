@@ -4,7 +4,7 @@ Playwright tests that drive the built web app against a running backend and Post
 
 ## Run locally
 1. `docker compose up -d` at the repo root
-2. Backend with `DICTIONARY_PROVIDER=fake`: `cd backend && uv run alembic upgrade head && uv run uvicorn app.main:app`
+2. Backend with `DICTIONARY_PROVIDER=fake`: `cd backend && ./gradlew bootRun` (Flyway migrations run on start)
 3. Web: `cd web && npm run build && npm run preview` (or `npm run dev`)
 4. `cd e2e && npm ci && npx playwright test`
 
