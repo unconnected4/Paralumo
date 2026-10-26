@@ -1,7 +1,7 @@
 ---
 task: <short-slug>                # stable ID, also used in the commit trailer "Task: <short-slug>"
 title: <one-line task title>
-status: in-progress               # in-progress | blocked | done | abandoned
+status: in-progress               # in-progress | ready-for-review | blocked | done | abandoned (ready-for-review: an implementer found nothing left; see docs/orchestration.md)
 branch: <branch>
 started: <UTC, YYYY-MM-DDTHH:MM:SSZ>
 last_updated: <UTC, YYYY-MM-DDTHH:MM:SSZ>

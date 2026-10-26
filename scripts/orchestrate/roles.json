@@ -1,25 +1,36 @@
 {
   "pipeline": {
-    "start": "implement",
-    "after": {
-      "implement": "review",
-      "review": "implement"
-    }
+    "implementers": ["opus", "gemini", "gpt"],
+    "reviewer": "fable"
   },
   "limits": {
-    "maxRounds": 8,
-    "maxRoundsWithoutCodeChange": 2,
+    "maxRounds": 30,
+    "maxImplementationRoundsPerCycle": 9,
     "roundTimeoutMinutes": 90
   },
   "roles": {
-    "implement": {
-      "agent": "ClaudeC-Fable",
+    "opus": {
+      "agent": "ClaudeC-Opus5.5",
       "command": "claude",
-      "model": "claude-fable-5-1",
+      "model": "claude-opus-5-5",
       "args": ["-p", "{prompt}", "--model", "{model}", "--dangerously-skip-permissions", "--output-format", "text"],
       "prompt": "scripts/orchestrate/prompts/implement.md"
     },
-    "review": {
+    "gemini": {
+      "agent": "GeminiC-3.7",
+      "command": "gemini",
+      "model": "gemini-3.7-pro",
+      "args": ["-p", "{prompt}", "-m", "{model}", "--yolo"],
+      "prompt": "scripts/orchestrate/prompts/implement.md"
+    },
+    "gpt": {
+      "agent": "CodexC-GPT6.1Sol",
+      "command": "codex",
+      "model": "gpt-6.1-sol",
+      "args": ["exec", "--model", "{model}", "--dangerously-bypass-approvals-and-sandbox", "{prompt}"],
+      "prompt": "scripts/orchestrate/prompts/implement.md"
+    },
+    "fable": {
       "agent": "ClaudeC-Fable",
       "command": "claude",
       "model": "claude-fable-5-1",
