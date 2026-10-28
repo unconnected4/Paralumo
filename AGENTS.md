@@ -27,9 +27,15 @@ Vocabulary app: dictionary lookup with per-sense saving and spaced-repetition pr
 - Keep instruction files lean: global rules here, project detail in the project's `AGENTS.md`.
 
 ## Agent names and output folders
-- Each agent has a stable name, assigned by the repo owner, used in commit trailers, handoff files and its output folder. Known agents:
-  - `ClaudeD-Fable5.1`: Claude (Cowork desktop)
-  - This list is incomplete on purpose. It will be updated once agent automation is built, so don't ask about or add missing names until then (by Alex).
+- Each agent has a stable name, assigned by the repo owner, used in commit trailers, handoff files and its output folder. A name identifies a tool and a model, not a session: every session run with that tool and model, interactive or headless, uses the same name (by Alex, 2026-10-28: "it is ok to reuse names"). Convention: `<Tool><C|D>-<Model>`, where `C` is a command-line agent and `D` a desktop app.
+- Known agents, with their role in the orchestrated loop (`scripts/orchestrate/roles.json`, explained in [docs/orchestration.md](docs/orchestration.md)):
+  - `ClaudeC-Opus5.5`: Claude Code with Opus 5.5. Implementer, first in the order.
+  - `AgyC-Gemini4Argon`: Antigravity CLI (`agy`) with Gemini 4 Argon. Implementer, second.
+  - `CodexC-GPT6.1Sol`: Codex CLI with GPT-6.1 Sol. Implementer, third.
+  - `ClaudeC-Fable`: Claude Code with Fable 5.1. Reviewer; also the name of interactive Claude Code sessions on Fable.
+  - `ClaudeD-Fable5.1`: Claude (Cowork desktop). Interactive only.
+  - `AgyD-Flash3.8`: Antigravity desktop with Gemini Flash 3.8. Interactive only; built the Step 0 web UI.
+- A new agent gets its name from Alex before its first commit, and a line in this list.
 - `AgentsOutput/<agent name>/` is each agent's scratch space for drafts, generated files and anything not ready for the repo. The whole folder is git-ignored. Write only in your own subfolder, and treat other agents' folders as read-only.
 - Nothing in `AgentsOutput/` is a source of truth. Anything that matters must be moved into the repo proper or recorded in a handoff file.
 

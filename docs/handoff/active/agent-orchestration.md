@@ -4,8 +4,8 @@ title: Automate the implement/review loop between agents
 status: in-progress
 branch: main
 started: 2026-09-29T14:39:07Z
-last_updated: 2026-10-28T12:48:00Z
-last_commit: dd81c4a
+last_updated: 2026-10-28T13:30:00Z
+last_commit: 1e14ce3
 agents: [ClaudeC-Fable, AgyC-Gemini4Argon]
 related_decisions: [docs/orchestration.md, AGENTS.md, docs/handoff/TEMPLATE.md]
 ---
@@ -31,6 +31,8 @@ Not yet verified: every path that needs a committing agent (the nothing-to-do st
 - Pipeline rewritten to ordered implementers + reviewer with the nothing-to-do streak, per-cycle cap, implementer `blocked` hand-over, reviewer question resolution, `ready-for-review` status (also added to `docs/handoff/TEMPLATE.md`), and a final report of open questions. Design doc rewritten accordingly, dd81c4a.
 - Switched the `gemini` role to Antigravity CLI (`agy`, model `gemini-4-argon-high`, agent `AgyC-Gemini4Argon`) and hardened `orchestrate.ps1` (`-CommandType Application`, `taskkill /T /F`).
 
+- Agent names aligned across the project (by Alex, 2026-10-28): the four headless names from `roles.json` plus the interactive ones from history are listed with their roles in `AGENTS.md`, the "incomplete on purpose" note is gone, and `docs/orchestration.md` names the agent per role.
+
 ## Tried and rejected
 - Agent triggers the next agent itself (Alex's first framing): rejected in favour of an external driver loop, because a crashed or forgetful agent silently breaks the chain and a hook firing inside a live session is fragile. Alex agreed.
 - Agent chooses its successor: rejected; the agent reports `status`, the driver's pipeline routes.
@@ -51,8 +53,10 @@ Not yet verified: every path that needs a committing agent (the nothing-to-do st
 - Driver tests run in a scratch clone with stand-in role commands, never against the real history.
 - Reviewer answers to questions are appended as `→ <answer> (resolved by <agent>, <date>: <evidence>)` and never tagged `by Alex`, so `git grep "by Alex"` keeps listing only Alex's own answers.
 
+- Agent names identify tool + model, not a session, and may be reused by any session with that tool and model (by Alex, 2026-10-28: "it is ok to reuse names"). Convention `<Tool><C|D>-<Model>`; the list of record is in `AGENTS.md`.
+
 ## Open questions
-- For Alex: agent names for the headless roles are provisional, following the visible convention `<Tool><C for CLI>-<Model>`: `ClaudeC-Opus5.5`, `AgyC-Gemini4Argon`, `CodexC-GPT6.1Sol`, `ClaudeC-Fable`. `ClaudeC-Opus5.5` was already used by an earlier interactive session. Confirm or rename them in `roles.json` before the first real run, since they end up in commit subjects. Also: should they be added to the known-agents list in `AGENTS.md` now that the automation exists?
+- ~~For Alex: agent names for the headless roles are provisional (`ClaudeC-Opus5.5`, `AgyC-Gemini4Argon`, `CodexC-GPT6.1Sol`, `ClaudeC-Fable`); `ClaudeC-Opus5.5` was already used by an earlier interactive session. Confirm or rename, and add to `AGENTS.md`?~~ → Names confirmed as they stand in `roles.json`; "align names and roles within the project. it is ok to reuse names" (by Alex, 2026-10-28). A name identifies tool + model, so interactive and headless sessions share it. All known names and their roles are now listed in `AGENTS.md`.
 - For Alex: model id and flags for the `gpt` row (`gpt-6.1-sol` with `codex exec --model ... --dangerously-bypass-approvals-and-sandbox`) are still unverified against `codex.exe`. Check them before running the `gpt` role.
 - For Alex: the auto-mode classifier blocks this session from creating a stand-in agent script that edits the handoff and commits (it looks like an unattended agent), so the routing paths listed under Current state are untested. Either run them yourself with a small committing stand-in wired into a test copy of `roles.json` under `-Config`, or accept the first real run as the test.
 
@@ -64,6 +68,8 @@ Verify the `gpt` role against `codex.exe` and run the first real loop.
 - 2026-09-29T14:55:00Z ClaudeC-Fable: Alex asked to create the script in the project. Built driver, role table and prompts; tested dry run and two stop paths in a scratch clone; classifier blocked a committing stand-in agent for the remaining paths. Added the per-role `model` field. Alex committed by hand (c0d65fe, 02f0e94).
 - 2026-10-26T17:25:00Z ClaudeC-Fable: Rewrote the pipeline to Alex's new spec (ordered implementers Opus → Gemini 3.7 → GPT-6.1 Sol cycling until nothing left, then Fable review with question resolution). Added `ready-for-review`, per-cycle cap, open-questions report. Tested dry runs and stop paths in the scratch clone.
 - 2026-10-28T12:38:00Z Antigravity: Switched the `gemini` role to Antigravity CLI (`agy` with `gemini-4-argon-high`), verified headless execution, and hardened `orchestrate.ps1` (`-CommandType Application`, `taskkill /T /F`).
+
+- 2026-10-28T13:30:00Z ClaudeC-Fable: Alex confirmed the agent names and allowed reuse. Listed all known agents with roles in `AGENTS.md`, aligned `docs/orchestration.md`, closed the names question.
 
 ## Outcome
 <!-- Filled in only when archiving. -->

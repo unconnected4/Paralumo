@@ -4,7 +4,7 @@ How agents are chained without a human triggering each one. Driver: `scripts/orc
 
 ## Shape (by Alex)
 - 2026-09-29: agents run **headless with auto-approved permissions** inside the repo. Nobody can answer a prompt during a run, so an agent that needs input writes the question into the handoff.
-- 2026-10-26: the pipeline is **several implementers in turn, then one reviewer**. Implementation runs Opus, then Gemini 3.7, then GPT-6.1 Sol, repeating the sequence "until none of the agents has anything to do for the current task". Then Fable reviews: if it has comments, they are recorded and the implementation cycle runs again. If there are questions to Alex, Fable tries to resolve them and forwards to Alex only what it can't.
+- 2026-10-26: the pipeline is **several implementers in turn, then one reviewer**. Implementation runs Opus, then Gemini (Gemini 3.7 at the time; switched to Gemini 4 Argon via the Antigravity CLI on 2026-10-28, by Alex), then GPT-6.1 Sol, repeating the sequence "until none of the agents has anything to do for the current task". Then Fable reviews: if it has comments, they are recorded and the implementation cycle runs again. If there are questions to Alex, Fable tries to resolve them and forwards to Alex only what it can't.
 - Other CLIs are added as a row in the role config, not as code.
 
 ## Principles
@@ -30,7 +30,7 @@ AgentsOutput/orchestrator/<UTC ts>-<task>/   per-run logs and rendered prompts (
 - `limits`: `maxRounds` (whole run), `maxImplementationRoundsPerCycle` (forces a review when implementers never agree they are finished), `roundTimeoutMinutes`.
 - `roles.<name>`: `agent` (the agent name used in commits and handoffs), `command`, `model`, `args` and `prompt` (template path). `args` holds the CLI's own flags with two placeholders the driver fills: `{prompt}` (the one-line pointer to the rendered prompt) and `{model}` (the role's `model`). The model flag stays in `args` because each CLI spells it differently: `claude -p {prompt} --model {model} --dangerously-skip-permissions`, `agy -p {prompt} --model {model} --dangerously-skip-permissions`, `codex exec --model {model} --dangerously-bypass-approvals-and-sandbox {prompt}`. A role without a `model` field must not reference `{model}`; the driver refuses to start otherwise. The chosen model is printed in every round's summary line.
 
-Current roles: `opus` (Claude Code, `claude-opus-5-5`), `gemini` (Antigravity CLI `agy`, `gemini-4-argon-high`), `gpt` (Codex CLI, `gpt-6.1-sol`) as implementers in that order, `fable` (Claude Code, `claude-fable-5-1`) as reviewer. The `agy` flags and model ID have been verified end-to-end; the Codex row still needs checking against the installed CLI.
+Current roles and agent names: `opus` (Claude Code, `claude-opus-5-5`, agent `ClaudeC-Opus5.5`), `gemini` (Antigravity CLI `agy`, `gemini-4-argon-high`, agent `AgyC-Gemini4Argon`), `gpt` (Codex CLI, `gpt-6.1-sol`, agent `CodexC-GPT6.1Sol`) as implementers in that order, `fable` (Claude Code, `claude-fable-5-1`, agent `ClaudeC-Fable`) as reviewer. The names follow the convention in `AGENTS.md` ("Agent names and output folders"), which is the list of record; a name identifies tool + model and is shared by interactive sessions using the same (by Alex, 2026-10-28). The `agy` flags and model ID have been verified end-to-end; the Codex row still needs checking against the installed CLI.
 
 ## Statuses
 The handoff front matter `status` is the agents' only control signal:
