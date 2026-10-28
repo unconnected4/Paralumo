@@ -358,7 +358,7 @@ Write-Summary ''
 Write-Summary '## Result'
 Write-Summary "Stopped after $round round(s), $cycle review cycle(s): $stopReason"
 Write-Summary "Commits this run: $($loopStart.Substring(0, 7))..$($finalHead.Substring(0, 7))"
-$openQuestions = Get-OpenQuestions $handoffPath
+$openQuestions = @(Get-OpenQuestions $handoffPath)
 if ($openQuestions.Count -gt 0) {
     Write-Summary 'Open questions for Alex in the handoff:'
     foreach ($q in $openQuestions) { Write-Summary "- $q" }

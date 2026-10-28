@@ -4,8 +4,8 @@ title: Automate the implement/review loop between agents
 status: in-progress
 branch: main
 started: 2026-09-29T14:39:07Z
-last_updated: 2026-10-28T13:25:11Z
-last_commit: 432a947
+last_updated: 2026-10-28T13:26:45Z
+last_commit: 7169140
 agents: [ClaudeC-Fable, AgyC-Gemini4Argon, CodexC-GPT5.6Terra]
 related_decisions: [docs/orchestration.md, AGENTS.md, docs/handoff/TEMPLATE.md]
 ---
@@ -16,7 +16,7 @@ related_decisions: [docs/orchestration.md, AGENTS.md, docs/handoff/TEMPLATE.md]
 A script that runs agents on one task without Alex triggering each one: implementers in a fixed order, cycling until none has anything left to do, then a reviewer that closes the task, records findings for another cycle, or escalates to Alex. Design: `docs/orchestration.md`. Done when `scripts/orchestrate/orchestrate.ps1 -Task <slug>` runs at least one full implementation pass and one review of a real task end to end, stops on the documented conditions, and its logs land in `AgentsOutput/orchestrator/`.
 
 ## Current state
-The driver, role table and prompts implement the pipeline Alex specified on 2026-10-26 (see Decisions). Verified in a scratch clone: dry runs for the first implementer and for the reviewer render the right prompt and command (model flag included); `-StartWith` rejects unknown roles; a role that exits without committing and a role that exits non-zero stop the loop with the reason; the final report lists the handoff's open `For Alex:` questions. Codex CLI 0.164.0 accepts the configured `exec` flags, and a minimal read-only invocation verified `gpt-5.6-terra` against the signed-in account. The orchestrator itself has not yet completed a Codex round.
+The driver, role table and prompts implement the pipeline Alex specified on 2026-10-26 (see Decisions). Verified in a scratch clone: dry runs for the first implementer and for the reviewer render the right prompt and command (model flag included); `-StartWith` rejects unknown roles; a role that exits without committing and a role that exits non-zero stop the loop with the reason; the final report lists the handoff's open `For Alex:` questions. Codex CLI 0.164.0 accepts the configured `exec` flags, and a minimal read-only invocation verified `gpt-5.6-terra` against the signed-in account. The orchestrator itself has not yet completed a Codex round. The updated Codex dry run rendered the expected command; it also exposed a strict-mode scalar `.Count` bug in final reporting when exactly one open Alex question exists, now fixed in the driver.
 
 The `gemini` role has been switched to the **Antigravity CLI (`agy`)** (`1.2.11`) after `@google/gemini-cli` rejected Google sign-in for individuals (migrated to Antigravity):
 - `roles.json` `gemini` row now runs `agy` (`C:\Users\inbox\AppData\Local\agy\bin\agy.exe`) with model `gemini-4-argon-high` (agent `AgyC-Gemini4Argon`) and args `["-p", "{prompt}", "--model", "{model}", "--dangerously-skip-permissions", "--output-format", "text"]`. Verified headless invocation via `Start-Process` returns exit code `0`.
@@ -33,6 +33,7 @@ Not yet verified: every path that needs a committing agent (the nothing-to-do st
 
 - Agent names aligned across the project (by Alex, 2026-10-28): the four headless names from `roles.json` plus the interactive ones from history are listed with their roles in `AGENTS.md`, the "incomplete on purpose" note is gone, and `docs/orchestration.md` names the agent per role.
 - Codex implementer model and name updated (by Alex, 2026-10-28): `gpt-5.6-terra` is accepted by the signed-in Codex CLI, so the role and agent are now `CodexC-GPT5.6Terra`.
+- Fixed final report handling for exactly one open Alex question by forcing `Get-OpenQuestions` output to an array.
 
 ## Tried and rejected
 - Agent triggers the next agent itself (Alex's first framing): rejected in favour of an external driver loop, because a crashed or forgetful agent silently breaks the chain and a hook firing inside a live session is fragile. Alex agreed.
@@ -63,7 +64,7 @@ Not yet verified: every path that needs a committing agent (the nothing-to-do st
 - For Alex: the auto-mode classifier blocks this session from creating a stand-in agent script that edits the handoff and commits (it looks like an unattended agent), so the routing paths listed under Current state are untested. Either run them yourself with a small committing stand-in wired into a test copy of `roles.json` under `-Config`, or accept the first real run as the test.
 
 ## Next step
-Run the orchestrator dry run after committing this configuration change, then continue the first real loop to verify the complete round protocol.
+Continue the first real loop to verify the complete round protocol.
 
 ## Session log
 - 2026-09-29T14:39:07Z ClaudeC-Fable: Agreed the design with Alex, wrote `docs/orchestration.md`, blocked on the permission classifier before any script was created.
@@ -73,6 +74,7 @@ Run the orchestrator dry run after committing this configuration change, then co
 
 - 2026-10-28T13:30:00Z ClaudeC-Fable: Alex confirmed the agent names and allowed reuse. Listed all known agents with roles in `AGENTS.md`, aligned `docs/orchestration.md`, closed the names question.
 - 2026-10-28T13:25:11Z CodexC-GPT5.6Terra: Verified `gpt-5.6-terra` with a minimal read-only Codex CLI call, updated the `gpt` role and agent name across config and docs. The orchestrator dry run requires a clean tree, so it remains for after this commit.
+- 2026-10-28T13:26:45Z CodexC-GPT5.6Terra: Committed model/name updates as `7169140`; dry run rendered the correct Codex command and revealed the single-question `.Count` error. Forced the question list to an array; rerun the dry run after committing this fix.
 
 ## Outcome
 <!-- Filled in only when archiving. -->
