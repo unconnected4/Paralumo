@@ -140,6 +140,11 @@ if (-not $reviewer) { throw "pipeline.reviewer is missing in $Config" }
 $roleNames = @($cfg.roles.PSObject.Properties.Name)
 foreach ($name in ($implementers + $reviewer)) {
     if ($roleNames -notcontains $name) { throw "Role '$name' is used in pipeline but not defined in roles. Roles: $($roleNames -join ', ')" }
+    # Fail before the first round rather than in the round that needs a missing CLI.
+    $cmdName = [string]$cfg.roles.$name.command
+    if (-not (Get-Command $cmdName -CommandType Application -ErrorAction SilentlyContinue)) {
+        throw "Role '$name' needs the command '$cmdName', which is not on PATH. Install it or remove the role from the pipeline."
+    }
 }
 
 if ($MaxRounds -le 0) { $MaxRounds = [int]$cfg.limits.maxRounds }
@@ -238,7 +243,11 @@ while ($round -lt $MaxRounds) {
 
     # ---- protocol checks, same for every role
     if ($proc.ExitCode -ne 0) {
-        $stopReason = "round $round ($role) exited with code $($proc.ExitCode); see $stderrPath"
+        # Show the tail of both logs so the cause (e.g. an expired CLI login) is visible without opening files.
+        $tail = @(Get-Content -LiteralPath $stdoutPath, $stderrPath -ErrorAction SilentlyContinue |
+            Where-Object { $_.Trim() } | Select-Object -Last 5)
+        $tailText = if ($tail.Count -gt 0) { $tail -join "`n  " } else { '(no output)' }
+        $stopReason = "round $round ($role) exited with code $($proc.ExitCode). Last output:`n  $tailText`nFull logs: $stdoutPath, $stderrPath"
         break
     }
     $dirty = Invoke-Git @('status', '--porcelain')

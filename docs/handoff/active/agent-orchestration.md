@@ -4,8 +4,8 @@ title: Automate the implement/review loop between agents
 status: in-progress
 branch: main
 started: 2026-09-29T14:39:07Z
-last_updated: 2026-10-28T13:29:34Z
-last_commit: c7a6becc79c62bcff91923bca12f1207048f12cf
+last_updated: 2026-10-28T17:37:18Z
+last_commit: 6d67bc6
 agents: [ClaudeC-Fable, AgyC-Gemini4Argon, CodexC-GPT5.6Terra]
 related_decisions: [docs/orchestration.md, AGENTS.md, docs/handoff/TEMPLATE.md]
 ---
@@ -61,10 +61,10 @@ Not yet verified: every path that needs a committing agent (the nothing-to-do st
 ## Open questions
 - ~~For Alex: agent names for the headless roles are provisional (`ClaudeC-Opus5.5`, `AgyC-Gemini4Argon`, `CodexC-GPT6.1Sol`, `ClaudeC-Fable`); `ClaudeC-Opus5.5` was already used by an earlier interactive session. Confirm or rename, and add to `AGENTS.md`?~~ → Names confirmed as they stand in `roles.json`; "align names and roles within the project. it is ok to reuse names" (by Alex, 2026-10-28). A name identifies tool + model, so interactive and headless sessions share it. All known names and their roles are now listed in `AGENTS.md`.
 - ~~For Alex: model id and flags for the `gpt` row (`gpt-6.1-sol` with `codex exec --model ... --dangerously-bypass-approvals-and-sandbox`) are still unverified against `codex.exe`. Check them before running the `gpt` role.~~ → Codex CLI 0.164.0 accepted these flags; `gpt-6.1-sol` was rejected for the signed-in ChatGPT account. A read-only call using `gpt-5.6-terra` succeeded (resolved by CodexC-GPT5.6Terra, 2026-10-28).
-- For Alex: the auto-mode classifier blocks this session from creating a stand-in agent script that edits the handoff and commits (it looks like an unattended agent), so the routing paths listed under Current state are untested. Either run them yourself with a small committing stand-in wired into a test copy of `roles.json` under `-Config`, or accept the first real run as the test.
+- ~~For Alex: the routing paths that need a committing agent are untested, because the interactive Claude Code session (auto mode) is not allowed to create a stand-in script that commits on its own. Test them with such a script yourself, or accept the first real run as the test?~~ → First real run accepted as the test (by Alex, 2026-10-28). Alex ran the loop on this task with `-StartWith gpt`: the Codex round committed a handoff-only update and the driver correctly counted it as "nothing to do"; the following Opus round failed at startup because the Claude CLI's OAuth session had expired (`claude auth status` → `loggedIn: false`). Not a driver bug: sign in again with `claude auth login` and rerun.
 
 ## Next step
-Continue the first real loop to verify the complete round protocol. The driver and its clean-tree dry-run path are healthy; the remaining evidence must come from a committing agent round and its routing through review.
+Alex: run `claude auth login` so the headless Claude roles can start, then rerun the loop. Cheapest full test of the routing: `powershell -ExecutionPolicy Bypass -File scripts/orchestrate/orchestrate.ps1 -Task step1-backend -Config AgentsOutput/orchestrator/roles-opus-only.json` (Opus only, cap 2 rounds per cycle, 3 rounds total, so round 3 is a Fable review). Then read `summary.md` in the run folder and the agents' commits, and fix whatever the real agents got wrong. Still unverified after this run: the full streak with three implementers, implementer `blocked` → review, reviewer `done` with handoff archiving.
 
 ## Session log
 - 2026-09-29T14:39:07Z ClaudeC-Fable: Agreed the design with Alex, wrote `docs/orchestration.md`, blocked on the permission classifier before any script was created.
@@ -77,6 +77,8 @@ Continue the first real loop to verify the complete round protocol. The driver a
 - 2026-10-28T13:26:45Z CodexC-GPT5.6Terra: Committed model/name updates as `7169140`; dry run rendered the correct Codex command and revealed the single-question `.Count` error. Forced the question list to an array; rerun the dry run after committing this fix.
 - 2026-10-28T13:27:45Z CodexC-GPT5.6Terra: Dry run passed on commit `77feb81`; it printed the configured Terra command and listed the one remaining open question without errors.
 - 2026-10-28T13:29:34Z CodexC-GPT5.6Terra: As the live-loop implementer, parsed `orchestrate.ps1` successfully and re-ran a clean-tree dry run from `c7a6bec`; it rendered the configured Opus command and final report correctly. No scoped code change remains before the reviewer assesses the live round; a committing agent/review routing path is still required for end-to-end acceptance.
+
+- 2026-10-28T17:37:18Z ClaudeC-Fable: Diagnosed Alex's first live run: Codex round routed correctly, Opus round failed because the Claude CLI was signed out. Driver now prints the log tail on a failed round and checks all pipeline CLIs before round 1. Closed the testing question.
 
 ## Outcome
 <!-- Filled in only when archiving. -->
