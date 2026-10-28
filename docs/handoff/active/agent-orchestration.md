@@ -4,9 +4,9 @@ title: Automate the implement/review loop between agents
 status: in-progress
 branch: main
 started: 2026-09-29T14:39:07Z
-last_updated: 2026-10-28T13:30:00Z
-last_commit: 1e14ce3
-agents: [ClaudeC-Fable, AgyC-Gemini4Argon]
+last_updated: 2026-10-28T13:25:11Z
+last_commit: 432a947
+agents: [ClaudeC-Fable, AgyC-Gemini4Argon, CodexC-GPT5.6Terra]
 related_decisions: [docs/orchestration.md, AGENTS.md, docs/handoff/TEMPLATE.md]
 ---
 
@@ -16,13 +16,13 @@ related_decisions: [docs/orchestration.md, AGENTS.md, docs/handoff/TEMPLATE.md]
 A script that runs agents on one task without Alex triggering each one: implementers in a fixed order, cycling until none has anything left to do, then a reviewer that closes the task, records findings for another cycle, or escalates to Alex. Design: `docs/orchestration.md`. Done when `scripts/orchestrate/orchestrate.ps1 -Task <slug>` runs at least one full implementation pass and one review of a real task end to end, stops on the documented conditions, and its logs land in `AgentsOutput/orchestrator/`.
 
 ## Current state
-The driver, role table and prompts implement the pipeline Alex specified on 2026-10-26 (see Decisions). Verified in a scratch clone: dry runs for the first implementer and for the reviewer render the right prompt and command (model flag included); `-StartWith` rejects unknown roles; a role that exits without committing and a role that exits non-zero stop the loop with the reason; the final report lists the handoff's open `For Alex:` questions.
+The driver, role table and prompts implement the pipeline Alex specified on 2026-10-26 (see Decisions). Verified in a scratch clone: dry runs for the first implementer and for the reviewer render the right prompt and command (model flag included); `-StartWith` rejects unknown roles; a role that exits without committing and a role that exits non-zero stop the loop with the reason; the final report lists the handoff's open `For Alex:` questions. Codex CLI 0.164.0 accepts the configured `exec` flags, and a minimal read-only invocation verified `gpt-5.6-terra` against the signed-in account. The orchestrator itself has not yet completed a Codex round.
 
 The `gemini` role has been switched to the **Antigravity CLI (`agy`)** (`1.2.11`) after `@google/gemini-cli` rejected Google sign-in for individuals (migrated to Antigravity):
 - `roles.json` `gemini` row now runs `agy` (`C:\Users\inbox\AppData\Local\agy\bin\agy.exe`) with model `gemini-4-argon-high` (agent `AgyC-Gemini4Argon`) and args `["-p", "{prompt}", "--model", "{model}", "--dangerously-skip-permissions", "--output-format", "text"]`. Verified headless invocation via `Start-Process` returns exit code `0`.
 - `orchestrate.ps1` uses `Get-Command -CommandType Application` (so `.ps1` shims are skipped) and `taskkill /PID $proc.Id /T /F` on timeout.
 
-Not yet verified: every path that needs a committing agent (the nothing-to-do streak, the per-cycle cap, implementer `blocked` → review, reviewer `done` / `in-progress` / `blocked`, stale `last_commit` warning, archived-handoff detection), a full round on a task, and the `gpt` (Codex CLI) model id and flags.
+Not yet verified: every path that needs a committing agent (the nothing-to-do streak, the per-cycle cap, implementer `blocked` → review, reviewer `done` / `in-progress` / `blocked`, stale `last_commit` warning, archived-handoff detection), and a full round on a task.
 
 ## Done
 - Design agreed with Alex and recorded in `docs/orchestration.md`, 25d1652.
@@ -32,6 +32,7 @@ Not yet verified: every path that needs a committing agent (the nothing-to-do st
 - Switched the `gemini` role to Antigravity CLI (`agy`, model `gemini-4-argon-high`, agent `AgyC-Gemini4Argon`) and hardened `orchestrate.ps1` (`-CommandType Application`, `taskkill /T /F`).
 
 - Agent names aligned across the project (by Alex, 2026-10-28): the four headless names from `roles.json` plus the interactive ones from history are listed with their roles in `AGENTS.md`, the "incomplete on purpose" note is gone, and `docs/orchestration.md` names the agent per role.
+- Codex implementer model and name updated (by Alex, 2026-10-28): `gpt-5.6-terra` is accepted by the signed-in Codex CLI, so the role and agent are now `CodexC-GPT5.6Terra`.
 
 ## Tried and rejected
 - Agent triggers the next agent itself (Alex's first framing): rejected in favour of an external driver loop, because a crashed or forgetful agent silently breaks the chain and a hook firing inside a live session is fragile. Alex agreed.
@@ -47,6 +48,7 @@ Not yet verified: every path that needs a committing agent (the nothing-to-do st
 ## Decisions made during this task
 - Headless runs with auto-approved permissions inside the repo (by Alex, 2026-09-29): unattended agents cannot answer prompts.
 - Pipeline (by Alex, 2026-10-26): implementation runs Opus, Gemini, GPT-6.1 Sol in that order, repeating "until none of the agents has anything to do for the current task"; then Fable reviews; comments start another implementation cycle; questions to Alex are first attempted by Fable and forwarded only if it can't resolve them. Replaces the 2026-09-29 fixed implement ↔ review pair.
+- Codex model (by Alex, 2026-10-28): use GPT-5.6 Terra for the Codex implementer after GPT-6.1 Sol was rejected by the signed-in Codex account. A read-only `codex exec` invocation accepted `gpt-5.6-terra`.
 - Gemini role uses Antigravity CLI (`agy`) (by Alex, 2026-10-28): command `agy`, model `gemini-4-argon-high`, agent `AgyC-Gemini4Argon`, args `-p {prompt} --model {model} --dangerously-skip-permissions --output-format text`.
 - Per-role `model` in `roles.json` (asked by Alex, 2026-09-29), filled into a `{model}` placeholder in `args` because each CLI spells the flag differently.
 - Driver in PowerShell 5.1 with a JSON role table: matches the host shell and needs no extra runtime. Run with `-ExecutionPolicy Bypass`, which is per process, rather than changing the machine's policy.
@@ -57,11 +59,11 @@ Not yet verified: every path that needs a committing agent (the nothing-to-do st
 
 ## Open questions
 - ~~For Alex: agent names for the headless roles are provisional (`ClaudeC-Opus5.5`, `AgyC-Gemini4Argon`, `CodexC-GPT6.1Sol`, `ClaudeC-Fable`); `ClaudeC-Opus5.5` was already used by an earlier interactive session. Confirm or rename, and add to `AGENTS.md`?~~ → Names confirmed as they stand in `roles.json`; "align names and roles within the project. it is ok to reuse names" (by Alex, 2026-10-28). A name identifies tool + model, so interactive and headless sessions share it. All known names and their roles are now listed in `AGENTS.md`.
-- For Alex: model id and flags for the `gpt` row (`gpt-6.1-sol` with `codex exec --model ... --dangerously-bypass-approvals-and-sandbox`) are still unverified against `codex.exe`. Check them before running the `gpt` role.
+- ~~For Alex: model id and flags for the `gpt` row (`gpt-6.1-sol` with `codex exec --model ... --dangerously-bypass-approvals-and-sandbox`) are still unverified against `codex.exe`. Check them before running the `gpt` role.~~ → Codex CLI 0.164.0 accepted these flags; `gpt-6.1-sol` was rejected for the signed-in ChatGPT account. A read-only call using `gpt-5.6-terra` succeeded (resolved by CodexC-GPT5.6Terra, 2026-10-28).
 - For Alex: the auto-mode classifier blocks this session from creating a stand-in agent script that edits the handoff and commits (it looks like an unattended agent), so the routing paths listed under Current state are untested. Either run them yourself with a small committing stand-in wired into a test copy of `roles.json` under `-Config`, or accept the first real run as the test.
 
 ## Next step
-Verify the `gpt` role against `codex.exe` and run the first real loop.
+Run the orchestrator dry run after committing this configuration change, then continue the first real loop to verify the complete round protocol.
 
 ## Session log
 - 2026-09-29T14:39:07Z ClaudeC-Fable: Agreed the design with Alex, wrote `docs/orchestration.md`, blocked on the permission classifier before any script was created.
@@ -70,6 +72,7 @@ Verify the `gpt` role against `codex.exe` and run the first real loop.
 - 2026-10-28T12:38:00Z Antigravity: Switched the `gemini` role to Antigravity CLI (`agy` with `gemini-4-argon-high`), verified headless execution, and hardened `orchestrate.ps1` (`-CommandType Application`, `taskkill /T /F`).
 
 - 2026-10-28T13:30:00Z ClaudeC-Fable: Alex confirmed the agent names and allowed reuse. Listed all known agents with roles in `AGENTS.md`, aligned `docs/orchestration.md`, closed the names question.
+- 2026-10-28T13:25:11Z CodexC-GPT5.6Terra: Verified `gpt-5.6-terra` with a minimal read-only Codex CLI call, updated the `gpt` role and agent name across config and docs. The orchestrator dry run requires a clean tree, so it remains for after this commit.
 
 ## Outcome
 <!-- Filled in only when archiving. -->

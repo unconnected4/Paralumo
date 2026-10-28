@@ -31,7 +31,7 @@ Vocabulary app: dictionary lookup with per-sense saving and spaced-repetition pr
 - Known agents, with their role in the orchestrated loop (`scripts/orchestrate/roles.json`, explained in [docs/orchestration.md](docs/orchestration.md)):
   - `ClaudeC-Opus5.5`: Claude Code with Opus 5.5. Implementer, first in the order.
   - `AgyC-Gemini4Argon`: Antigravity CLI (`agy`) with Gemini 4 Argon. Implementer, second.
-  - `CodexC-GPT6.1Sol`: Codex CLI with GPT-6.1 Sol. Implementer, third.
+  - `CodexC-GPT5.6Terra`: Codex CLI with GPT-5.6 Terra. Implementer, third.
   - `ClaudeC-Fable`: Claude Code with Fable 5.1. Reviewer; also the name of interactive Claude Code sessions on Fable.
   - `ClaudeD-Fable5.1`: Claude (Cowork desktop). Interactive only.
   - `AgyD-Flash3.8`: Antigravity desktop with Gemini Flash 3.8. Interactive only; built the Step 0 web UI.

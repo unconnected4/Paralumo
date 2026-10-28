@@ -24,9 +24,9 @@
       "prompt": "scripts/orchestrate/prompts/implement.md"
     },
     "gpt": {
-      "agent": "CodexC-GPT6.1Sol",
+      "agent": "CodexC-GPT5.6Terra",
       "command": "codex",
-      "model": "gpt-6.1-sol",
+      "model": "gpt-5.6-terra",
       "args": ["exec", "--model", "{model}", "--dangerously-bypass-approvals-and-sandbox", "{prompt}"],
       "prompt": "scripts/orchestrate/prompts/implement.md"
     },
