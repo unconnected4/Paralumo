@@ -206,7 +206,7 @@ while ($round -lt $MaxRounds) {
     $pointer = "Read the file $promptPath and follow the instructions in it exactly."
     $argItems = @($roleCfg.args | ForEach-Object { ([string]$_).Replace('{prompt}', $pointer).Replace('{model}', $model) })
     $argString = ConvertTo-ArgumentString $argItems
-    $exe = (Get-Command $roleCfg.command -ErrorAction Stop).Source
+    $exe = (Get-Command $roleCfg.command -CommandType Application -ErrorAction Stop | Select-Object -First 1).Source
 
     $modelLabel = if ($model) { $model } else { 'CLI default' }
     Write-Summary "## Round $round : $phase / $role ($agent, model: $modelLabel), cycle $cycle"
@@ -228,6 +228,7 @@ while ($round -lt $MaxRounds) {
     $null = $proc.Handle   # PowerShell 5.1: ExitCode stays empty unless the handle is read before the wait
     $finished = $proc.WaitForExit($timeoutMs)
     if (-not $finished) {
+        & taskkill /PID $proc.Id /T /F 2>$null | Out-Null
         try { $proc.Kill() } catch { }
         $stopReason = "round $round ($role) exceeded the timeout of $($cfg.limits.roundTimeoutMinutes) minutes and was killed"
         break

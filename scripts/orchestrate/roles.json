@@ -17,10 +17,10 @@
       "prompt": "scripts/orchestrate/prompts/implement.md"
     },
     "gemini": {
-      "agent": "GeminiC-3.7",
-      "command": "gemini",
-      "model": "gemini-3.7-pro",
-      "args": ["-p", "{prompt}", "-m", "{model}", "--yolo"],
+      "agent": "AgyC-Gemini4Argon",
+      "command": "agy",
+      "model": "gemini-4-argon-high",
+      "args": ["-p", "{prompt}", "--model", "{model}", "--dangerously-skip-permissions", "--output-format", "text"],
       "prompt": "scripts/orchestrate/prompts/implement.md"
     },
     "gpt": {

@@ -28,9 +28,9 @@ AgentsOutput/orchestrator/<UTC ts>-<task>/   per-run logs and rendered prompts (
 `roles.json` has three parts:
 - `pipeline`: `implementers` (ordered list of role names) and `reviewer` (one role name).
 - `limits`: `maxRounds` (whole run), `maxImplementationRoundsPerCycle` (forces a review when implementers never agree they are finished), `roundTimeoutMinutes`.
-- `roles.<name>`: `agent` (the agent name used in commits and handoffs), `command`, `model`, `args` and `prompt` (template path). `args` holds the CLI's own flags with two placeholders the driver fills: `{prompt}` (the one-line pointer to the rendered prompt) and `{model}` (the role's `model`). The model flag stays in `args` because each CLI spells it differently: `claude -p {prompt} --model {model} --dangerously-skip-permissions`, `gemini -p {prompt} -m {model} --yolo`, `codex exec --model {model} --dangerously-bypass-approvals-and-sandbox {prompt}`. A role without a `model` field must not reference `{model}`; the driver refuses to start otherwise. The chosen model is printed in every round's summary line.
+- `roles.<name>`: `agent` (the agent name used in commits and handoffs), `command`, `model`, `args` and `prompt` (template path). `args` holds the CLI's own flags with two placeholders the driver fills: `{prompt}` (the one-line pointer to the rendered prompt) and `{model}` (the role's `model`). The model flag stays in `args` because each CLI spells it differently: `claude -p {prompt} --model {model} --dangerously-skip-permissions`, `agy -p {prompt} --model {model} --dangerously-skip-permissions`, `codex exec --model {model} --dangerously-bypass-approvals-and-sandbox {prompt}`. A role without a `model` field must not reference `{model}`; the driver refuses to start otherwise. The chosen model is printed in every round's summary line.
 
-Current roles: `opus` (Claude Code, `claude-opus-5-5`), `gemini` (Gemini CLI, `gemini-3.7-pro`), `gpt` (Codex CLI, `gpt-6.1-sol`) as implementers in that order, `fable` (Claude Code, `claude-fable-5-1`) as reviewer. The Gemini and Codex rows are configured but unverified: neither CLI is installed yet, and their model ids and flags need checking against the installed versions.
+Current roles: `opus` (Claude Code, `claude-opus-5-5`), `gemini` (Antigravity CLI `agy`, `gemini-4-argon-high`), `gpt` (Codex CLI, `gpt-6.1-sol`) as implementers in that order, `fable` (Claude Code, `claude-fable-5-1`) as reviewer. The `agy` flags and model ID have been verified end-to-end; the Codex row still needs checking against the installed CLI.
 
 ## Statuses
 The handoff front matter `status` is the agents' only control signal:
@@ -77,13 +77,13 @@ powershell -ExecutionPolicy Bypass -File scripts/orchestrate/orchestrate.ps1 -Ta
 ```
 `-ExecutionPolicy Bypass` applies to that one process only; the script is unsigned and the default policy refuses it. Other switches: `-DryRun` renders the first prompt and prints the command without running an agent, `-StartWith <role>` starts with that implementer or with the reviewer, `-MaxRounds N` and `-Config <path>` override the config.
 
-Requirements: a clean working tree, an existing `docs/handoff/active/<task>.md` with Goal and Next step filled in (by a human or an earlier session), and the CLIs from `roles.json` on `PATH`. A missing CLI fails the round that needs it, so until Gemini and Codex are installed, run with a config that lists only the installed roles.
+Requirements: a clean working tree, an existing `docs/handoff/active/<task>.md` with Goal and Next step filled in (by a human or an earlier session), and the CLIs from `roles.json` on `PATH`. A missing CLI fails the round that needs it.
 
 ## Limits of the first version
 - Sequential only. Parallel roles would need one worktree per agent; not planned until there is a reason.
-- Only agents with a CLI can be triggered. Desktop-app agents (Cowork, Antigravity) stay manual; the driver's answer for them is "stop and tell Alex".
+- Only agents with a CLI can be triggered. Desktop-app agents without a CLI (such as Cowork) stay manual; the driver's answer for them is "stop and tell Alex".
 - No pushing. The driver works on the local branch; Alex pushes.
-- A killed round (timeout) kills the CLI process only. A `.cmd` shim such as npm's `gemini` may leave its child running.
+- A killed round (timeout) runs `taskkill /T /F` on the CLI process ID so child processes of `.cmd` shims are also terminated.
 
 ## Testing the driver
 Stop paths are tested by pointing `-Config` at a copy of `roles.json` whose role commands are stand-ins, run in a scratch clone so no test commit lands in the real history. Verified so far: dry run for an implementer and for the reviewer, `-StartWith` validation, a role that exits without committing (`cmd.exe /c echo`), a role that exits non-zero (`cmd.exe /c exit 3`), the open-questions report. Not yet exercised with a real or stand-in committing agent: the streak logic, the per-cycle cap, the implementer `blocked` hand-over, the reviewer's `done` / `in-progress` / `blocked` outcomes, the stale `last_commit` warning and the archived-handoff detection. See the handoff's Next step.
