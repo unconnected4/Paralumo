@@ -4,8 +4,8 @@ title: Automate the implement/review loop between agents
 status: in-progress
 branch: main
 started: 2026-09-29T14:39:07Z
-last_updated: 2026-10-28T13:27:45Z
-last_commit: 77feb81
+last_updated: 2026-10-28T13:29:34Z
+last_commit: c7a6becc79c62bcff91923bca12f1207048f12cf
 agents: [ClaudeC-Fable, AgyC-Gemini4Argon, CodexC-GPT5.6Terra]
 related_decisions: [docs/orchestration.md, AGENTS.md, docs/handoff/TEMPLATE.md]
 ---
@@ -22,7 +22,7 @@ The `gemini` role has been switched to the **Antigravity CLI (`agy`)** (`1.2.11`
 - `roles.json` `gemini` row now runs `agy` (`C:\Users\inbox\AppData\Local\agy\bin\agy.exe`) with model `gemini-4-argon-high` (agent `AgyC-Gemini4Argon`) and args `["-p", "{prompt}", "--model", "{model}", "--dangerously-skip-permissions", "--output-format", "text"]`. Verified headless invocation via `Start-Process` returns exit code `0`.
 - `orchestrate.ps1` uses `Get-Command -CommandType Application` (so `.ps1` shims are skipped) and `taskkill /PID $proc.Id /T /F` on timeout.
 
-Not yet verified: every path that needs a committing agent (the nothing-to-do streak, the per-cycle cap, implementer `blocked` → review, reviewer `done` / `in-progress` / `blocked`, stale `last_commit` warning, archived-handoff detection), and a full round on a task.
+Not yet verified: every path that needs a committing agent (the nothing-to-do streak, the per-cycle cap, implementer `blocked` → review, reviewer `done` / `in-progress` / `blocked`, stale `last_commit` warning, archived-handoff detection), and a full round on a task. The PowerShell parser and the current clean-tree dry-run path passed again in this live-loop implementer round.
 
 ## Done
 - Design agreed with Alex and recorded in `docs/orchestration.md`, 25d1652.
@@ -64,7 +64,7 @@ Not yet verified: every path that needs a committing agent (the nothing-to-do st
 - For Alex: the auto-mode classifier blocks this session from creating a stand-in agent script that edits the handoff and commits (it looks like an unattended agent), so the routing paths listed under Current state are untested. Either run them yourself with a small committing stand-in wired into a test copy of `roles.json` under `-Config`, or accept the first real run as the test.
 
 ## Next step
-Continue the first real loop to verify the complete round protocol. A clean-tree Codex dry run passed on 2026-10-28 after the single-open-question report fix.
+Continue the first real loop to verify the complete round protocol. The driver and its clean-tree dry-run path are healthy; the remaining evidence must come from a committing agent round and its routing through review.
 
 ## Session log
 - 2026-09-29T14:39:07Z ClaudeC-Fable: Agreed the design with Alex, wrote `docs/orchestration.md`, blocked on the permission classifier before any script was created.
@@ -76,6 +76,7 @@ Continue the first real loop to verify the complete round protocol. A clean-tree
 - 2026-10-28T13:25:11Z CodexC-GPT5.6Terra: Verified `gpt-5.6-terra` with a minimal read-only Codex CLI call, updated the `gpt` role and agent name across config and docs. The orchestrator dry run requires a clean tree, so it remains for after this commit.
 - 2026-10-28T13:26:45Z CodexC-GPT5.6Terra: Committed model/name updates as `7169140`; dry run rendered the correct Codex command and revealed the single-question `.Count` error. Forced the question list to an array; rerun the dry run after committing this fix.
 - 2026-10-28T13:27:45Z CodexC-GPT5.6Terra: Dry run passed on commit `77feb81`; it printed the configured Terra command and listed the one remaining open question without errors.
+- 2026-10-28T13:29:34Z CodexC-GPT5.6Terra: As the live-loop implementer, parsed `orchestrate.ps1` successfully and re-ran a clean-tree dry run from `c7a6bec`; it rendered the configured Opus command and final report correctly. No scoped code change remains before the reviewer assesses the live round; a committing agent/review routing path is still required for end-to-end acceptance.
 
 ## Outcome
 <!-- Filled in only when archiving. -->
