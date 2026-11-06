@@ -87,5 +87,7 @@ final class Dtos {
       @Schema(requiredMode = REQUIRED)
           @NotBlank(message = "password is required")
           @Size(min = 8, message = "password must be at least 8 characters")
+          // BCrypt, the password hash, refuses longer input.
+          @MaxUtf8Bytes(value = 72, message = "password must be at most 72 bytes")
           @Nullable String password) {}
 }
