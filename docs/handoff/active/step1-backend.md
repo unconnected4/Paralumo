@@ -1,11 +1,11 @@
 ---
 task: step1-backend
 title: Step 1 — Backend implementation and data model, based on the Step 0 web UI
-status: in-progress
+status: ready-for-review
 branch: main
 started: 2026-09-26T21:00:46Z
-last_updated: 2026-11-06T10:26:58Z
-last_commit: dada4ea
+last_updated: 2026-11-06T10:47:30Z
+last_commit: 27cb309
 agents: [ClaudeC-Fable, ClaudeC-Opus5.5]
 related_decisions: [intent.md, docs/plan.md, backend/intent.md, web/intent.md, docs/handoff/archive/handoff-20260926T195210Z.md]
 ---
@@ -18,7 +18,7 @@ Implement the backend the Step 0 web UI proved it needs (`docs/plan.md` → Step
 Acceptance (P24, `docs/plan.md`): `npm run gen:api` replaces the interim module and `npm run typecheck` passes with pages, hooks and MSW handlers unchanged apart from imports. Backend `./gradlew check` (format, Error Prone + NullAway, unit and integration tests) passes with no warnings.
 
 ## Current state
-Implemented, not yet reviewed. `backend/` is scaffolded and serves the whole Step 0 contract below; `docs/api/openapi.json` is exported from it; `web/src/api/` now uses the client generated from that spec. Backend `./gradlew check` and web lint, typecheck, tests and build all pass (verified 2026-11-06). Step 1 acceptance (P24) holds: `npm run gen:api` reproduces the committed `schema.d.ts`, and pages, hooks and MSW handlers are unchanged. Not done yet: review, e2e against the real backend, CI workflows.
+Implemented, not yet reviewed. `backend/` is scaffolded and serves the whole Step 0 contract below; `docs/api/openapi.json` is exported from it; `web/src/api/` now uses the client generated from that spec. Backend `./gradlew check` and web lint, typecheck, tests and build all pass (verified 2026-11-06, again in orchestrated round 1 with `--rerun-tasks --no-build-cache`). Step 1 acceptance (P24) holds: `npm run gen:api` reproduces the committed `schema.d.ts`, and pages, hooks and MSW handlers are unchanged. Not done yet: review, e2e against the real backend, CI workflows.
 
 Contract as the web UI uses it today:
 - `GET /api/dictionary/lookup?q=` → `{query, lexemes[]}`, senses carry `saved: bool` for the current user (false when signed out). Unknown word → `404 {detail}`. Empty query → `{query: '', lexemes: []}` (the client short-circuits this without a request).
@@ -54,13 +54,14 @@ Contract as the web UI uses it today:
 - Next agent: this machine has no Docker. The 2026-10-28 and 2026-11-06 sessions used a portable JDK 25 and PostgreSQL 16 in `AgentsOutput/ClaudeC-Opus5.5/` (set `JAVA_HOME` to its `jdk/jdk-25.0.5+8`; start the database with `pg/pgsql/bin/pg_ctl -D pgdata -l pg.log start`), with the same users and databases as `docker-compose.yml`. Other agents may read it, but must not rely on it: it isn't in the repo.
 
 ## Next step
-Review Step 1 (reviewer role, commits from `dada4ea` on). After that: run the web UI in backend mode (`npm run dev` against `./gradlew bootRun`) and add the e2e smoke test in `e2e/`, then the CI workflows (`.github/workflows/backend.yml` and `web.yml`, which `docs/engineering.md` describes but which don't exist yet). Archive this handoff when those are done or split into their own tasks.
+Review Step 1 (reviewer role, commits from `dada4ea` on). Implementers have nothing left against "Goal and acceptance"; the items below go beyond it, and the reviewer decides whether they stay in this task or become their own. After that: run the web UI in backend mode (`npm run dev` against `./gradlew bootRun`) and add the e2e smoke test in `e2e/`, then the CI workflows (`.github/workflows/backend.yml` and `web.yml`, which `docs/engineering.md` describes but which don't exist yet). Archive this handoff when those are done or split into their own tasks.
 
 ## Session log
 - 2026-09-26T21:00:46Z ClaudeC-Fable: Reviewed Step 0 (commits 3dd5343..67eb91b); fixed URL-driven search, the mock-mode flag, ApiError, labelled auth inputs, return-after-sign-in, strict MSW in tests; opened this handoff with the contract summary and open questions. Commit: see `git log --grep="Agent: ClaudeC-Fable"`.
 - 2026-10-26T16:18:51Z ClaudeC-Fable: Switched the backend plan from FastAPI to Java (Spring Boot, Gradle, JPA + Flyway) at Alex's request; rewrote backend/AGENTS.md and backend/intent.md and updated shared docs. No code yet.
 - 2026-10-28 ClaudeC-Opus5.5: Scaffolded and implemented the backend, exported the spec and moved web to the generated client; `check` passed. Interrupted before the handoff update and commit.
 - 2026-11-06T10:26:58Z ClaudeC-Opus5.5: Reviewed the leftover uncommitted work, found it complete, re-ran backend `check` (no caches) and web lint/typecheck/tests/build (all pass), updated this handoff and committed it all.
+- 2026-11-06T10:47:30Z ClaudeC-Opus5.5: Orchestrated round 1 (implementer). Next step was review, acceptance already met; re-ran backend `check` (`--rerun-tasks --no-build-cache`) and web lint/typecheck/tests/build/`gen:api` (all pass, `gen:api` leaves no diff). Nothing left for implementers; set `ready-for-review`.
 
 ## Outcome
 <!-- Filled in only when archiving. -->
