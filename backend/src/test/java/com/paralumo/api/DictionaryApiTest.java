@@ -1,5 +1,6 @@
 package com.paralumo.api;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -8,7 +9,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.paralumo.IntegrationTest;
 import com.paralumo.config.SessionTokens;
 import jakarta.servlet.http.Cookie;
+import java.sql.Connection;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Test;
+import org.springframework.test.web.servlet.MvcResult;
 
 @IntegrationTest
 class DictionaryApiTest extends ApiSupport {
@@ -63,6 +68,33 @@ class DictionaryApiTest extends ApiSupport {
     mvc.perform(get("/api/dictionary/lookup").param("q", "bank"))
         .andExpect(status().isOk())
         .andExpect(content().json(first));
+  }
+
+  @Test
+  void firstLookupOfAWordWhileAnotherRequestRecordsItSucceeds() throws Exception {
+    try (Connection other = dataSource.getConnection()) {
+      // The other lookup has recorded the lexeme but not committed yet.
+      other.setAutoCommit(false);
+      other
+          .createStatement()
+          .executeUpdate("INSERT INTO lexemes (lemma, lang, pos) VALUES ('run', 'en', 'verb')");
+
+      CompletableFuture<MvcResult> lookingUp =
+          CompletableFuture.supplyAsync(
+              () -> {
+                try {
+                  return mvc.perform(get("/api/dictionary/lookup").param("q", "run")).andReturn();
+                } catch (Exception e) {
+                  throw new IllegalStateException(e);
+                }
+              });
+      awaitABlockedQuery();
+      other.commit();
+
+      MvcResult result = lookingUp.get(10, TimeUnit.SECONDS);
+      assertThat(result.getResponse().getStatus()).isEqualTo(200);
+    }
+    assertThat(jdbc.queryForObject("SELECT count(*) FROM lexemes", Integer.class)).isEqualTo(2);
   }
 
   @Test
