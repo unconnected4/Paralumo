@@ -4,8 +4,8 @@ title: Cross-check of the Step 1 backend by all three implementers, then review
 status: in-progress
 branch: main
 started: 2026-11-06T12:24:36Z
-last_updated: 2026-11-06T13:54:07Z
-last_commit: 4821f73
+last_updated: 2026-11-06T15:35:00Z
+last_commit: 6ecc7e9
 agents: [ClaudeC-Fable, ClaudeC-Opus5.5, AgyC-Gemini4Argon, CodexC-GPT5.6Terra]
 related_decisions: [docs/plan.md, intent.md, backend/intent.md, backend/AGENTS.md, web/intent.md, docs/engineering.md, docs/api/openapi.json, docs/handoff/archive/handoff-20261106T105500Z.md]
 ---
@@ -89,13 +89,17 @@ Format: `- F<n> [defect|improvement|proposal] <file or area>: <what is wrong and
 - F17 [improvement] `api/CardApiTest`: `backend/intent.md` requires saved cards to retain copied sense data when `senses`/`lexemes` later change and soft-deleted cards to keep `created_at`, `notes`, `custom_example`, and copied fields when restored; neither invariant was directly tested, and `listsNewestFirst` relied on wall-clock advancement between back-to-back saves. Added a test covering both invariants and spaced `listsNewestFirst` timestamps explicitly. Found by: AgyC-Gemini4Argon. Status: fixed 3b16280.
 - F18 [improvement] `api/AuthApiTest`, `api/HealthControllerTest`, `config/SessionTokensTest`: three paths lacked test coverage — `UserService.register`'s concurrent duplicate-email `DataIntegrityViolationException` -> 409 catch block, `HealthController.ready()`'s 503 problem-detail branch when `JdbcTemplate` throws `DataAccessException`, and `SessionTokens`'s `Path=/api` and `clearingCookie()` attributes. Added deterministic tests for all three. Found by: AgyC-Gemini4Argon. Status: fixed 4ec1fb5.
 - F19 [defect] `web/src/mocks/handlers.ts`: direct `GET /api/dictionary/lookup?q=` returned a 422 problem response, while the backend and OpenAPI contract define a 200 `{query: '', lexemes: []}` response. `client.lookup` short-circuits blank input, which hid the permanent mock drift from its existing test. Found by: CodexC-GPT5.6Terra. Status: fixed 4821f73.
+- F20 [defect] `web/src/mocks/handlers.ts`: F16's problem bodies used three `detail` strings the backend never sends: `Word 'x' not found` (backend: `Word "x" not found`), `Sense '<id>' not found` (backend: `Sense not found`) and `Request body is missing or malformed JSON` (backend: `... or not valid JSON`). `SearchPage` shows `detail` to the user, so mock mode showed wording the real app doesn't. Aligned, with a test that fails on the old strings. Found by: ClaudeC-Opus5.5. Status: fixed 6ecc7e9.
 
 ## Current state
+Update (ClaudeC-Opus5.5, round 1 of the second driver run, 20261106T152737Z): read every commit since 2b3fabf (2a74bd0..937847d; 937847d belongs to `agent-orchestration` and touches nothing in scope). The backend changes for F11–F15, F17, F18 and the web changes for F16, F19 are sound, except F20 (mock detail wording), fixed in 6ecc7e9. Backend `./gradlew check` passes with no warnings; web lint, typecheck, test (25 tests) and build pass, and `npm run gen:api` leaves no diff. The paragraphs below are superseded by this update.
+
 Update (round 3): all three implementers have now completed their full reviews. CodexC-GPT5.6Terra independently confirmed F7–F9 and found/fixed F19 (4821f73). Backend `./gradlew check` passes with no warnings; web `npm run lint && npm run typecheck && npm test && npm run build` passes (24 tests), and `npm run gen:api` leaves no diff. The following paragraph is superseded by this update.
 
 `ClaudeC-Opus5.5` (round 1, F1–F10) and `AgyC-Gemini4Argon` (round 2, F7–F9 confirmed, F11–F18 recorded and fixed in 2a74bd0..4ec1fb5) have completed their full reviews. `CodexC-GPT5.6Terra` has not reviewed yet, and `ClaudeC-Opus5.5` has not yet inspected the round 2 commits. At 4ec1fb5, backend `./gradlew check --rerun-tasks --no-build-cache` passes with zero warnings, web `npm run lint && npm run typecheck && npm test && npm run build` passes (23 tests), and `npm run gen:api` leaves no diff. No change touched `docs/api/openapi.json`.
 
 ## Done
+- ClaudeC-Opus5.5, second driver run round 1 (rule 6): reviewed 2a74bd0..4821f73. Fixed F20 in 6ecc7e9. Checked and found sound: F11's early return skips the dummy hash, but for known and unknown emails alike, so it reveals no accounts; F12's trim runs in the record's canonical constructor, which Jackson uses; F14's startup exception fails binding as the fail-fast rule wants; F15 still never falls back to the cookie on a blank or forged bearer header; the F18 registration race test uses the same blocked-connection pattern as F3's.
 - CodexC-GPT5.6Terra independent full review of the whole scope at 4821f73. Confirmed F7–F9 proposals and fixed F19's empty-query contract drift in the permanent MSW handler, with a direct-handler test.
 - ClaudeC-Opus5.5 full review of the whole scope against the checklist in "Goal and acceptance". Fixes, each with a test that fails without it: F1 cacba92, F2 4f5b2f4, F3 14c4f05, F5 f768ba5. Tests for untested paths: F4 3411e2f, F6 213751f. `backend/intent.md` notes the 72-byte password limit (4f5b2f4).
 - AgyC-Gemini4Argon independent full review of the whole scope at 2b3fabf, including `cacba92..2b3fabf`. Defects fixed with tests: F11 2a74bd0, F12 269fe19, F13 0c9ebcb, F14 0edf694, F15 cd15cf5, F16 7eed89e. Test-coverage and determinism improvements: F17 3b16280, F18 4ec1fb5. Independently confirmed F7–F9 proposals and verified F1, F3–F6 fixes and F10 rejection rationale.
@@ -124,6 +128,8 @@ Update (round 3): all three implementers have now completed their full reviews. 
 - Next agent: tests and local runs use the fake dictionary provider only; never call the live Yandex API (`AGENTS.md`).
 
 ## Next step
+0. Supersedes item 1 below where they differ: AgyC-Gemini4Argon and CodexC-GPT5.6Terra should, in their next round, read the commits since their last round (now including 6ecc7e9) per rule 6. ClaudeC-Opus5.5 only needs to read commits after 6ecc7e9.
+
 1. Supersedes the following stale first-round instruction: ClaudeC-Opus5.5 and AgyC-Gemini4Argon should inspect commits since their respective previous rounds (including 4821f73), following rule 6. Record or fix any defect in those changes; otherwise set `ready-for-review`. CodexC-GPT5.6Terra should inspect only commits since 4821f73 in a later round.
 
 1. `CodexC-GPT5.6Terra`, in your first round (`ClaudeC-Opus5.5` and `AgyC-Gemini4Argon` have done their full reviews): do your full review of the scope in "Goal and acceptance" (rule 1), record findings, fix defects with tests (rule 2), run the backend and web checks, fill in your row in "Review coverage", update this handoff and commit.
@@ -131,6 +137,7 @@ Update (round 3): all three implementers have now completed their full reviews. 
 3. Reviewer (`ClaudeC-Fable`), when the implementers have stopped: check the acceptance list. If a row in "Review coverage" is empty, set `in-progress` and say which agent still owes its review. Decide every `proposal` and every recorded disagreement, review the fix commits, re-run all checks. Copy accepted proposals that change a decision into the matching `intent.md` before closing.
 
 ## Session log
+- 2026-11-06T15:35:00Z ClaudeC-Opus5.5: Second driver run (20261106T152737Z) round 1, rule 6 review of 2a74bd0..937847d. Recorded and fixed F20 (6ecc7e9); all backend and web checks pass. Status stays in-progress because code changed.
 - 2026-11-06T13:54:07Z CodexC-GPT5.6Terra: Round 3 independent full review at 4821f73. Confirmed F7–F9, recorded and fixed F19; backend `check` and all web checks including API generation pass. Status stays in-progress because code changed in this round.
 - 2026-11-06T12:24:36Z ClaudeC-Fable: Opened this handoff at Alex's request after confirming from history and run logs that Gemini and Codex never worked on Step 1. No code changed.
 - 2026-11-06T12:52:00Z ClaudeC-Opus5.5: Round 1 full review. Recorded F1–F10, fixed F1–F6 in six commits (cacba92..213751f), all checks pass. Status stays in-progress because code changed.
