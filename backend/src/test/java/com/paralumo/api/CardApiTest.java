@@ -10,7 +10,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.paralumo.IntegrationTest;
 import jakarta.servlet.http.Cookie;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
@@ -58,6 +62,46 @@ class CardApiTest extends ApiSupport {
 
     save(learner, runSenseId).andExpect(status().isOk()).andExpect(jsonPath("$.id").value(id));
     mvc.perform(get("/api/cards").cookie(learner)).andExpect(jsonPath("$.length()").value(1));
+  }
+
+  @Test
+  void savingWhileAnotherRequestSavesTheSameSenseReturnsTheCard() throws Exception {
+    UUID otherRequestsCard = UUID.randomUUID();
+    try (Connection other = dataSource.getConnection()) {
+      // The other request has inserted the card but not committed yet.
+      other.setAutoCommit(false);
+      try (PreparedStatement insert =
+          other.prepareStatement(
+              """
+              INSERT INTO user_cards (id, user_id, sense_id, sense_key, lemma, pos, transcription,
+                  translation_ru, synonyms_ru, meanings_en, examples, created_at)
+              SELECT ?, u.id, s.id, s.source_key, l.lemma, l.pos, l.transcription,
+                  s.translation_ru, s.synonyms_ru, s.meanings_en, s.examples, now()
+              FROM users u, senses s JOIN lexemes l ON l.id = s.lexeme_id
+              WHERE u.email = 'learner@example.com' AND s.source_key = ?
+              """)) {
+        insert.setObject(1, otherRequestsCard);
+        insert.setString(2, runSenseId);
+        assertThat(insert.executeUpdate()).isOne();
+      }
+
+      // This request doesn't see that row, so it inserts too and waits on the unique constraint.
+      CompletableFuture<MvcResult> saving =
+          CompletableFuture.supplyAsync(
+              () -> {
+                try {
+                  return save(learner, runSenseId).andReturn();
+                } catch (Exception e) {
+                  throw new IllegalStateException(e);
+                }
+              });
+      awaitABlockedQuery();
+      other.commit();
+
+      MvcResult result = saving.get(10, TimeUnit.SECONDS);
+      assertThat(result.getResponse().getStatus()).isEqualTo(200);
+      assertThat(read(result, "$.id")).isEqualTo(otherRequestsCard.toString());
+    }
   }
 
   @Test

@@ -6,7 +6,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.jayway.jsonpath.JsonPath;
 import com.paralumo.config.SessionTokens;
 import jakarta.servlet.http.Cookie;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.Objects;
+import javax.sql.DataSource;
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
@@ -21,6 +24,7 @@ abstract class ApiSupport {
 
   @Autowired MockMvc mvc;
   @Autowired JdbcTemplate jdbc;
+  @Autowired DataSource dataSource;
 
   @BeforeEach
   void emptyDatabase() {
@@ -50,5 +54,22 @@ abstract class ApiSupport {
 
   static String read(MvcResult result, String path) throws Exception {
     return JsonPath.read(result.getResponse().getContentAsString(), path);
+  }
+
+  /** Waits until some query in the test database is blocked on a lock held by the test. */
+  void awaitABlockedQuery() throws InterruptedException {
+    Instant deadline = Instant.now().plus(Duration.ofSeconds(10));
+    while (Instant.now().isBefore(deadline)) {
+      Integer waiting =
+          jdbc.queryForObject(
+              "SELECT count(*) FROM pg_stat_activity"
+                  + " WHERE datname = current_database() AND wait_event_type = 'Lock'",
+              Integer.class);
+      if (waiting != null && waiting > 0) {
+        return;
+      }
+      Thread.sleep(20);
+    }
+    throw new AssertionError("the save never reached the unique constraint");
   }
 }
