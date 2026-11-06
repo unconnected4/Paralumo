@@ -4,9 +4,9 @@ title: Cross-check of the Step 1 backend by all three implementers, then review
 status: in-progress
 branch: main
 started: 2026-11-06T12:24:36Z
-last_updated: 2026-11-06T12:24:36Z
-last_commit: fd097c1
-agents: [ClaudeC-Fable]
+last_updated: 2026-11-06T12:52:00Z
+last_commit: 213751f
+agents: [ClaudeC-Fable, ClaudeC-Opus5.5]
 related_decisions: [docs/plan.md, intent.md, backend/intent.md, backend/AGENTS.md, web/intent.md, docs/engineering.md, docs/api/openapi.json, docs/handoff/archive/handoff-20261106T105500Z.md]
 ---
 
@@ -59,7 +59,7 @@ Fill in your own row only, in the round where you do your full review.
 
 | Agent | Full review done (UTC date, round) | Findings recorded | Reviewed at commit |
 |---|---|---|---|
-| ClaudeC-Opus5.5 | | | |
+| ClaudeC-Opus5.5 | 2026-11-06, round 1 | F1–F10 | a2f8522 |
 | AgyC-Gemini4Argon | | | |
 | CodexC-GPT5.6Terra | | | |
 
@@ -70,15 +70,35 @@ One line per finding, numbered `F1`, `F2`, … in the order recorded. Never renu
 
 Format: `- F<n> [defect|improvement|proposal] <file or area>: <what is wrong and why it matters>. Found by: <agents>. Status: open | fixed <sha> | rejected (<reason>, <agent>) | proposal.`
 
-- None yet.
+- F1 [defect] `config/SessionTokens`: tokens were issued with the injected `Clock` but their expiry was checked by the decoder's default `JwtTimestampValidator` against the system clock. `SessionTokensTest` issues at a fixed 2026-10-28, so `verifiesItsOwnTokens` would have started failing after 2026-11-27, and `rejectsExpiredTokens` passed only because the system clock was later. Found by: ClaudeC-Opus5.5. Status: fixed cacba92.
+- F2 [defect] `api/Dtos.RegisterRequest`: Spring Security 7's BCrypt encoder throws for passwords over 72 bytes, so registering with a long password (or 37+ Cyrillic letters) was a 500. Now 422 `password must be at most 72 bytes` via a byte-counting `@MaxUtf8Bytes` constraint. Login was already fine: `matches` truncates, so a long login password is an ordinary 401. Found by: ClaudeC-Opus5.5. Status: fixed 4f5b2f4.
+- F3 [defect] `service/CardService.save`: check-then-insert with no handling of the `(user_id, sense_id)` unique violation, so two concurrent saves of one sense by one user (double click, two tabs) made the second a 500. Now retried once in a fresh transaction, answering 200 with the existing card; deterministic test with a second, uncommitted connection. Found by: ClaudeC-Opus5.5. Status: fixed 14c4f05.
+- F4 [improvement] `service/LookupService`: the retry after a concurrent first lookup of the same word was untested. Test added (no code change); it fails if the retry is broken. Found by: ClaudeC-Opus5.5. Status: fixed 3411e2f.
+- F5 [defect] `api/ApiExceptionHandler`: exceptions it didn't map (database errors, bugs, the F3 race) fell through to Spring Boot's `/error` body `{timestamp,status,error,path}`, which has no `detail`, against the recorded "errors are ProblemDetail" rule. A catch-all now logs and answers a generic 500 problem body without internals. Found by: ClaudeC-Opus5.5. Status: fixed f768ba5.
+- F6 [improvement] CSRF: the no-CSRF-token decision relies on state-changing endpoints rejecting the bodies an HTML form can send; nothing tested that. Test added: `text/plain`, form-urlencoded and multipart posts to login and cards are 415 (holds on current code). Found by: ClaudeC-Opus5.5. Status: fixed 213751f.
+- F7 [proposal] Session revocation: logout only clears the cookie. The JWT stays valid for 30 days, so a copied cookie or a bearer token (the planned Android transport) can't be signed out, and a password change couldn't end other sessions. This follows the recorded stateless-JWT decision, so I left the code alone. Proposal: before bearer clients ship (or with account settings), add revocation, e.g. a `token_version` column on `users` checked by `SessionTokenFilter` (one primary-key read per authenticated request), or server-side sessions. Found by: ClaudeC-Opus5.5. Status: proposal.
+- F8 [proposal] Logout CSRF: `POST /api/auth/logout` takes no body and needs no cookie, so a cross-site form can sign a user out. The recorded CSRF decision accepts "no body" endpoints, and the only effect is a nuisance logout. Proposal: accept as is and say so in the CSRF note in `backend/intent.md`; requiring a JSON body would change the contract for no real gain. Found by: ClaudeC-Opus5.5. Status: proposal.
+- F9 [proposal] Brute force: login and register have no rate limiting or lockout. This isn't in Step 1's plan, and the right mechanism (proxy or app-level) depends on hosting, which is TBD. Proposal: add it to `docs/plan.md` as a pre-production item tied to the hosting decision. Found by: ClaudeC-Opus5.5. Status: proposal.
+- F10 [defect] A validly signed token for a user id with no `users` row (local DB reset with the same `AUTH_SECRET`) makes `POST /api/cards` hit the `user_cards.user_id` foreign key: a 500 (a problem body since F5). Found by: ClaudeC-Opus5.5. Status: rejected (nothing deletes users in production; a stale local cookie is cleared by signing in again, since `/api/auth/me` already answers 401 for it; account deletion, when it comes, needs revocation anyway, see F7. ClaudeC-Opus5.5).
 
 ## Current state
-Not started. The code under review is at `fd097c1`; nothing in scope has changed since the Step 1 review (b74cc11). All checks passed at that commit.
+`ClaudeC-Opus5.5` has done its full review (round 1): F1–F10. It fixed four defects and closed two test gaps in cacba92..213751f, and left three proposals and one rejection. `AgyC-Gemini4Argon` and `CodexC-GPT5.6Terra` have not reviewed yet. At 213751f, backend `./gradlew check` passes with no warnings, web `npm run lint && npm run typecheck && npm test && npm run build` passes (22 tests), and `npm run gen:api` leaves no diff. No change touched the API spec.
 
 ## Done
-- Nothing yet.
+- ClaudeC-Opus5.5 full review of the whole scope against the checklist in "Goal and acceptance". Fixes, each with a test that fails without it: F1 cacba92, F2 4f5b2f4, F3 14c4f05, F5 f768ba5. Tests for untested paths: F4 3411e2f, F6 213751f. `backend/intent.md` notes the 72-byte password limit (4f5b2f4).
+- Checked by ClaudeC-Opus5.5 and found sound (no finding):
+  - Per-user isolation tests cover list, save, delete and lookup `saved`.
+  - Login gives the same 401 and detail for an unknown email and a wrong password, and `DaoAuthenticationProvider` hashes a dummy password for unknown users, so timing doesn't reveal accounts. Register's 409 does reveal them, which the contract requires.
+  - Cookie attributes are as recorded, and CORS is off unless `CORS_ORIGINS` is set.
+  - Env vars are read only through `@ConfigurationProperties`, and `.env.example` lists them all.
+  - The migration matches the entities (Hibernate `validate` runs in every integration test).
+  - The spec matches the controllers (drift test), and the generated client matches the spec.
+  - `DictionaryProvider` returns our own shapes with ids from `SenseIds`, so a Yandex provider plugs in without callers changing.
 
 ## Tried and rejected
+- F3 via `INSERT ... ON CONFLICT DO NOTHING` (ClaudeC-Opus5.5): rejected, because it needs a native insert of every copied column (arrays, jsonb) alongside the entity mapping. A retry in a fresh transaction reuses the existing code path.
+- F3 test as a thread race (ClaudeC-Opus5.5): rejected, because it could pass with broken code. The test instead holds an uncommitted conflicting insert in a second connection and waits for the save to block on it (`pg_stat_activity`).
+- F2 by switching to a password encoder without BCrypt's limit (ClaudeC-Opus5.5): not done, because it changes the stored hash format, which is a decision rather than a defect fix.
 - Reopening the Step 1 handoff for this: rejected, archived handoffs are read-only (`AGENTS.md`), and a cross-check has its own goal and acceptance.
 
 ## Decisions made during this task
@@ -90,12 +110,13 @@ Not started. The code under review is at `fd097c1`; nothing in scope has changed
 - Next agent: tests and local runs use the fake dictionary provider only; never call the live Yandex API (`AGENTS.md`).
 
 ## Next step
-1. `ClaudeC-Opus5.5`, `AgyC-Gemini4Argon`, `CodexC-GPT5.6Terra`, each in your first round: do your full review of the scope in "Goal and acceptance" (rule 1), record findings, fix defects with tests (rule 2), run the backend and web checks, fill in your row in "Review coverage", update this handoff and commit.
+1. `AgyC-Gemini4Argon`, `CodexC-GPT5.6Terra`, each in your first round (`ClaudeC-Opus5.5` has done its review): do your full review of the scope in "Goal and acceptance" (rule 1), record findings, fix defects with tests (rule 2), run the backend and web checks, fill in your row in "Review coverage", update this handoff and commit.
 2. In any later round: follow rule 6 and the status rules above.
 3. Reviewer (`ClaudeC-Fable`), when the implementers have stopped: check the acceptance list. If a row in "Review coverage" is empty, set `in-progress` and say which agent still owes its review. Decide every `proposal` and every recorded disagreement, review the fix commits, re-run all checks. Copy accepted proposals that change a decision into the matching `intent.md` before closing.
 
 ## Session log
 - 2026-11-06T12:24:36Z ClaudeC-Fable: Opened this handoff at Alex's request after confirming from history and run logs that Gemini and Codex never worked on Step 1. No code changed.
+- 2026-11-06T12:52:00Z ClaudeC-Opus5.5: Round 1 full review. Recorded F1–F10, fixed F1–F6 in six commits (cacba92..213751f), all checks pass. Status stays in-progress because code changed.
 
 ## Outcome
 <!-- Filled in only when archiving. -->
