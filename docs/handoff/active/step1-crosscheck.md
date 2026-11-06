@@ -4,9 +4,9 @@ title: Cross-check of the Step 1 backend by all three implementers, then review
 status: in-progress
 branch: main
 started: 2026-11-06T12:24:36Z
-last_updated: 2026-11-06T12:52:00Z
-last_commit: 213751f
-agents: [ClaudeC-Fable, ClaudeC-Opus5.5]
+last_updated: 2026-11-06T13:45:00Z
+last_commit: 4ec1fb5
+agents: [ClaudeC-Fable, ClaudeC-Opus5.5, AgyC-Gemini4Argon]
 related_decisions: [docs/plan.md, intent.md, backend/intent.md, backend/AGENTS.md, web/intent.md, docs/engineering.md, docs/api/openapi.json, docs/handoff/archive/handoff-20261106T105500Z.md]
 ---
 
@@ -60,7 +60,7 @@ Fill in your own row only, in the round where you do your full review.
 | Agent | Full review done (UTC date, round) | Findings recorded | Reviewed at commit |
 |---|---|---|---|
 | ClaudeC-Opus5.5 | 2026-11-06, round 1 | F1–F10 | a2f8522 |
-| AgyC-Gemini4Argon | | | |
+| AgyC-Gemini4Argon | 2026-11-06, round 2 | F7–F9, F11–F18 | 2b3fabf |
 | CodexC-GPT5.6Terra | | | |
 
 Opus wrote this code. For Opus, a full review means re-reading it as a reviewer would, against the list above, not confirming that the checks still pass.
@@ -76,23 +76,32 @@ Format: `- F<n> [defect|improvement|proposal] <file or area>: <what is wrong and
 - F4 [improvement] `service/LookupService`: the retry after a concurrent first lookup of the same word was untested. Test added (no code change); it fails if the retry is broken. Found by: ClaudeC-Opus5.5. Status: fixed 3411e2f.
 - F5 [defect] `api/ApiExceptionHandler`: exceptions it didn't map (database errors, bugs, the F3 race) fell through to Spring Boot's `/error` body `{timestamp,status,error,path}`, which has no `detail`, against the recorded "errors are ProblemDetail" rule. A catch-all now logs and answers a generic 500 problem body without internals. Found by: ClaudeC-Opus5.5. Status: fixed f768ba5.
 - F6 [improvement] CSRF: the no-CSRF-token decision relies on state-changing endpoints rejecting the bodies an HTML form can send; nothing tested that. Test added: `text/plain`, form-urlencoded and multipart posts to login and cards are 415 (holds on current code). Found by: ClaudeC-Opus5.5. Status: fixed 213751f.
-- F7 [proposal] Session revocation: logout only clears the cookie. The JWT stays valid for 30 days, so a copied cookie or a bearer token (the planned Android transport) can't be signed out, and a password change couldn't end other sessions. This follows the recorded stateless-JWT decision, so I left the code alone. Proposal: before bearer clients ship (or with account settings), add revocation, e.g. a `token_version` column on `users` checked by `SessionTokenFilter` (one primary-key read per authenticated request), or server-side sessions. Found by: ClaudeC-Opus5.5. Status: proposal.
-- F8 [proposal] Logout CSRF: `POST /api/auth/logout` takes no body and needs no cookie, so a cross-site form can sign a user out. The recorded CSRF decision accepts "no body" endpoints, and the only effect is a nuisance logout. Proposal: accept as is and say so in the CSRF note in `backend/intent.md`; requiring a JSON body would change the contract for no real gain. Found by: ClaudeC-Opus5.5. Status: proposal.
-- F9 [proposal] Brute force: login and register have no rate limiting or lockout. This isn't in Step 1's plan, and the right mechanism (proxy or app-level) depends on hosting, which is TBD. Proposal: add it to `docs/plan.md` as a pre-production item tied to the hosting decision. Found by: ClaudeC-Opus5.5. Status: proposal.
+- F7 [proposal] Session revocation: logout only clears the cookie. The JWT stays valid for 30 days, so a copied cookie or a bearer token (the planned Android transport) can't be signed out, and a password change couldn't end other sessions. This follows the recorded stateless-JWT decision, so I left the code alone. Proposal: before bearer clients ship (or with account settings), add revocation, e.g. a `token_version` column on `users` checked by `SessionTokenFilter` (one primary-key read per authenticated request), or server-side sessions. Found by: ClaudeC-Opus5.5, AgyC-Gemini4Argon. Status: proposal.
+- F8 [proposal] Logout CSRF: `POST /api/auth/logout` takes no body and needs no cookie, so a cross-site form can sign a user out. The recorded CSRF decision accepts "no body" endpoints, and the only effect is a nuisance logout. Proposal: accept as is and say so in the CSRF note in `backend/intent.md`; requiring a JSON body would change the contract for no real gain. Found by: ClaudeC-Opus5.5, AgyC-Gemini4Argon. Status: proposal.
+- F9 [proposal] Brute force: login and register have no rate limiting or lockout. This isn't in Step 1's plan, and the right mechanism (proxy or app-level) depends on hosting, which is TBD. Proposal: add it to `docs/plan.md` as a pre-production item tied to the hosting decision. Found by: ClaudeC-Opus5.5, AgyC-Gemini4Argon. Status: proposal.
 - F10 [defect] A validly signed token for a user id with no `users` row (local DB reset with the same `AUTH_SECRET`) makes `POST /api/cards` hit the `user_cards.user_id` foreign key: a 500 (a problem body since F5). Found by: ClaudeC-Opus5.5. Status: rejected (nothing deletes users in production; a stale local cookie is cleared by signing in again, since `/api/auth/me` already answers 401 for it; account deletion, when it comes, needs revocation anyway, see F7. ClaudeC-Opus5.5).
+- F11 [defect] `service/UserService.authenticate`: contrary to F2's note, Spring Security 7's `BCrypt.checkpw` silently truncates candidate passwords at 72 UTF-8 bytes, so an account with a 72-byte password accepted any wrong password sharing the first 72 bytes with 200 OK, and `authenticate` hashed arbitrarily large strings. `authenticate` now rejects passwords over 72 chars or 72 UTF-8 bytes as `Optional.empty()` (401, no contract change) before `AuthenticationManager` runs. Found by: AgyC-Gemini4Argon. Status: fixed 2a74bd0.
+- F12 [defect] `api/Dtos.RegisterRequest`: `UserService.normalizeEmail` trimmed outer spaces on login, whereas `RegisterRequest` ran `@Email` on the untrimmed input, rejecting padded emails such as `"  learner@example.com  "` with 422 instead of normalizing and registering. `RegisterRequest`'s compact constructor now trims `email` before Bean Validation runs. Found by: AgyC-Gemini4Argon. Status: fixed 269fe19.
+- F13 [defect] `api/AuthApiTest`: `backend/AGENTS.md` requires a per-user isolation test on every endpoint that touches user data; `GET /api/auth/me` was never tested with more than one user in `users`. Added `meReturnsOnlyTheAuthenticatedUser` covering cookie and bearer auth across two users. Found by: AgyC-Gemini4Argon. Status: fixed 0c9ebcb.
+- F14 [defect] `config/CorsProperties`: `SecurityConfig` sets `allowCredentials(true)`, so setting `CORS_ORIGINS=*` passed startup and threw `IllegalArgumentException` (500) at request time, violating `docs/engineering.md`'s fail-fast configuration rule; origin entries were also untrimmed, and CORS had no tests. `CorsProperties` now trims origins and rejects `*` at startup, with unit and integration tests for allowed/disallowed origins and the default CORS-off path. Found by: AgyC-Gemini4Argon. Status: fixed 0edf694.
+- F15 [defect] `config/SessionTokenFilter`: `resolveToken` checked `header.startsWith("Bearer ")` case-sensitively, ignoring lowercase `"bearer <token>"` or `"BEARER <token>"` headers despite RFC 9110 §11.1 making HTTP auth scheme names case-insensitive. Now matches the prefix with `regionMatches(true, ...)` and trims surrounding whitespace while keeping invalid or blank bearer headers non-null so they never fall back to a stale cookie. Found by: AgyC-Gemini4Argon. Status: fixed cd15cf5.
+- F16 [defect] `web/src/mocks/handlers.ts`, `web/src/api/client.test.ts`: MSW handlers had drifted from `docs/api/openapi.json` and the backend — `register` did not enforce email format, `minLength: 8`, or max 72 UTF-8 bytes (masking a contract bug in `client.test.ts` where the duplicate-email 409 test sent 5-char `'other'`, a 422 on the real backend), emails were neither trimmed nor lowercased on register/login, `login` accepted >72-byte passwords, whitespace-only strings bypassed `!body?.field`, malformed JSON threw 500 instead of 422, `POST /api/cards` read an undocumented `notes` request field, and error responses used `application/json` instead of `application/problem+json`. Aligned handlers and client tests with the contract. Found by: AgyC-Gemini4Argon. Status: fixed 7eed89e.
+- F17 [improvement] `api/CardApiTest`: `backend/intent.md` requires saved cards to retain copied sense data when `senses`/`lexemes` later change and soft-deleted cards to keep `created_at`, `notes`, `custom_example`, and copied fields when restored; neither invariant was directly tested, and `listsNewestFirst` relied on wall-clock advancement between back-to-back saves. Added a test covering both invariants and spaced `listsNewestFirst` timestamps explicitly. Found by: AgyC-Gemini4Argon. Status: fixed 3b16280.
+- F18 [improvement] `api/AuthApiTest`, `api/HealthControllerTest`, `config/SessionTokensTest`: three paths lacked test coverage — `UserService.register`'s concurrent duplicate-email `DataIntegrityViolationException` -> 409 catch block, `HealthController.ready()`'s 503 problem-detail branch when `JdbcTemplate` throws `DataAccessException`, and `SessionTokens`'s `Path=/api` and `clearingCookie()` attributes. Added deterministic tests for all three. Found by: AgyC-Gemini4Argon. Status: fixed 4ec1fb5.
 
 ## Current state
-`ClaudeC-Opus5.5` has done its full review (round 1): F1–F10. It fixed four defects and closed two test gaps in cacba92..213751f, and left three proposals and one rejection. `AgyC-Gemini4Argon` and `CodexC-GPT5.6Terra` have not reviewed yet. At 213751f, backend `./gradlew check` passes with no warnings, web `npm run lint && npm run typecheck && npm test && npm run build` passes (22 tests), and `npm run gen:api` leaves no diff. No change touched the API spec.
+`ClaudeC-Opus5.5` (round 1, F1–F10) and `AgyC-Gemini4Argon` (round 2, F7–F9 confirmed, F11–F18 recorded and fixed in 2a74bd0..4ec1fb5) have completed their full reviews. `CodexC-GPT5.6Terra` has not reviewed yet, and `ClaudeC-Opus5.5` has not yet inspected the round 2 commits. At 4ec1fb5, backend `./gradlew check --rerun-tasks --no-build-cache` passes with zero warnings, web `npm run lint && npm run typecheck && npm test && npm run build` passes (23 tests), and `npm run gen:api` leaves no diff. No change touched `docs/api/openapi.json`.
 
 ## Done
 - ClaudeC-Opus5.5 full review of the whole scope against the checklist in "Goal and acceptance". Fixes, each with a test that fails without it: F1 cacba92, F2 4f5b2f4, F3 14c4f05, F5 f768ba5. Tests for untested paths: F4 3411e2f, F6 213751f. `backend/intent.md` notes the 72-byte password limit (4f5b2f4).
-- Checked by ClaudeC-Opus5.5 and found sound (no finding):
-  - Per-user isolation tests cover list, save, delete and lookup `saved`.
-  - Login gives the same 401 and detail for an unknown email and a wrong password, and `DaoAuthenticationProvider` hashes a dummy password for unknown users, so timing doesn't reveal accounts. Register's 409 does reveal them, which the contract requires.
-  - Cookie attributes are as recorded, and CORS is off unless `CORS_ORIGINS` is set.
+- AgyC-Gemini4Argon independent full review of the whole scope at 2b3fabf, including `cacba92..2b3fabf`. Defects fixed with tests: F11 2a74bd0, F12 269fe19, F13 0c9ebcb, F14 0edf694, F15 cd15cf5, F16 7eed89e. Test-coverage and determinism improvements: F17 3b16280, F18 4ec1fb5. Independently confirmed F7–F9 proposals and verified F1, F3–F6 fixes and F10 rejection rationale.
+- Checked by ClaudeC-Opus5.5 and AgyC-Gemini4Argon and found sound (no finding):
+  - Per-user isolation tests now cover every user-data endpoint (`GET /api/auth/me`, `GET /api/cards`, `POST /api/cards`, `DELETE /api/cards/{id}`, and `GET /api/dictionary/lookup` `saved` flags).
+  - Login gives the same 401 and detail for an unknown email, a wrong password, and an over-72-byte password, and `DaoAuthenticationProvider` hashes a dummy password for unknown users, so timing doesn't reveal accounts. Register's 409 does reveal them, which the contract requires.
+  - Cookie and clearing-cookie attributes (`HttpOnly`, `SameSite=Lax`, `Path=/api`, `Secure` in production) are tested, and CORS fails fast on `*` and stays off unless `CORS_ORIGINS` is set.
   - Env vars are read only through `@ConfigurationProperties`, and `.env.example` lists them all.
-  - The migration matches the entities (Hibernate `validate` runs in every integration test).
-  - The spec matches the controllers (drift test), and the generated client matches the spec.
+  - The migration matches the entities (Hibernate `validate` runs in every integration test), and unique-constraint races are deterministically tested on lookup, card save, and user registration.
+  - The spec matches the controllers (drift test), the generated client matches the spec, and MSW handlers match the spec.
   - `DictionaryProvider` returns our own shapes with ids from `SenseIds`, so a Yandex provider plugs in without callers changing.
 
 ## Tried and rejected
@@ -100,6 +109,7 @@ Format: `- F<n> [defect|improvement|proposal] <file or area>: <what is wrong and
 - F3 test as a thread race (ClaudeC-Opus5.5): rejected, because it could pass with broken code. The test instead holds an uncommitted conflicting insert in a second connection and waits for the save to block on it (`pg_stat_activity`).
 - F2 by switching to a password encoder without BCrypt's limit (ClaudeC-Opus5.5): not done, because it changes the stored hash format, which is a decision rather than a defect fix.
 - Reopening the Step 1 handoff for this: rejected, archived handoffs are read-only (`AGENTS.md`), and a cross-check has its own goal and acceptance.
+- F11 via `@MaxUtf8Bytes(72)` on `LoginRequest` (AgyC-Gemini4Argon): rejected, because a wrong >72-byte password at sign-in should return 401 `Invalid email or password` like any other wrong password without changing `docs/api/openapi.json` to make overlong login passwords a 422. Checking length and UTF-8 byte count in `UserService.authenticate` stops `BCrypt.checkpw` truncation and short-circuits oversized inputs in O(1) before UTF-8 encoding or hashing.
 
 ## Decisions made during this task
 - All three implementers review and fix, then Fable reviews (by Alex, 2026-11-06): "I want that all three reviewed the code, fix findings and only then Fable reviews it again".
@@ -110,13 +120,14 @@ Format: `- F<n> [defect|improvement|proposal] <file or area>: <what is wrong and
 - Next agent: tests and local runs use the fake dictionary provider only; never call the live Yandex API (`AGENTS.md`).
 
 ## Next step
-1. `AgyC-Gemini4Argon`, `CodexC-GPT5.6Terra`, each in your first round (`ClaudeC-Opus5.5` has done its review): do your full review of the scope in "Goal and acceptance" (rule 1), record findings, fix defects with tests (rule 2), run the backend and web checks, fill in your row in "Review coverage", update this handoff and commit.
-2. In any later round: follow rule 6 and the status rules above.
+1. `CodexC-GPT5.6Terra`, in your first round (`ClaudeC-Opus5.5` and `AgyC-Gemini4Argon` have done their full reviews): do your full review of the scope in "Goal and acceptance" (rule 1), record findings, fix defects with tests (rule 2), run the backend and web checks, fill in your row in "Review coverage", update this handoff and commit.
+2. `ClaudeC-Opus5.5` and `AgyC-Gemini4Argon`, in any later round: follow rule 6 (inspect commits since your last round) and the status rules above.
 3. Reviewer (`ClaudeC-Fable`), when the implementers have stopped: check the acceptance list. If a row in "Review coverage" is empty, set `in-progress` and say which agent still owes its review. Decide every `proposal` and every recorded disagreement, review the fix commits, re-run all checks. Copy accepted proposals that change a decision into the matching `intent.md` before closing.
 
 ## Session log
 - 2026-11-06T12:24:36Z ClaudeC-Fable: Opened this handoff at Alex's request after confirming from history and run logs that Gemini and Codex never worked on Step 1. No code changed.
 - 2026-11-06T12:52:00Z ClaudeC-Opus5.5: Round 1 full review. Recorded F1–F10, fixed F1–F6 in six commits (cacba92..213751f), all checks pass. Status stays in-progress because code changed.
+- 2026-11-06T13:45:00Z AgyC-Gemini4Argon: Round 2 independent full review at 2b3fabf. Confirmed F7–F9, recorded and fixed F11–F18 in eight commits (2a74bd0..4ec1fb5), all backend and web checks pass. Status stays in-progress because code changed.
 
 ## Outcome
 <!-- Filled in only when archiving. -->
