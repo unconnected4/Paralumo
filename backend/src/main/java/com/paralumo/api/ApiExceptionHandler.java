@@ -4,6 +4,8 @@ import com.paralumo.service.ConflictException;
 import com.paralumo.service.NotFoundException;
 import java.util.stream.Collectors;
 import org.jspecify.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
@@ -24,6 +26,8 @@ import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExcep
 @RestControllerAdvice
 class ApiExceptionHandler extends ResponseEntityExceptionHandler {
 
+  private static final Logger log = LoggerFactory.getLogger(ApiExceptionHandler.class);
+
   @ExceptionHandler
   ProblemDetail notFound(NotFoundException e) {
     return ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, e.getMessage());
@@ -37,6 +41,17 @@ class ApiExceptionHandler extends ResponseEntityExceptionHandler {
   @ExceptionHandler
   ProblemDetail unauthorized(UnauthorizedException e) {
     return ProblemDetail.forStatusAndDetail(HttpStatus.UNAUTHORIZED, e.getMessage());
+  }
+
+  /**
+   * Anything else is a bug or an outage. Without this, Spring Boot's error page would answer with
+   * its own body, which has no {@code detail}. The message stays in the log, not the response.
+   */
+  @ExceptionHandler
+  ProblemDetail unexpected(Exception e) {
+    log.error("Unhandled exception", e);
+    return ProblemDetail.forStatusAndDetail(
+        HttpStatus.INTERNAL_SERVER_ERROR, "Something went wrong. Please try again.");
   }
 
   @Override
