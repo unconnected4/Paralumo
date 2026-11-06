@@ -1,6 +1,6 @@
 # Agent orchestration
 
-How agents are chained without a human triggering each one. Driver: `scripts/orchestrate/orchestrate.ps1`. Task history: `docs/handoff/active/agent-orchestration.md`.
+How agents are chained without a human triggering each one. Driver: `scripts/orchestrate/orchestrate.ps1`. Task history: `docs/handoff/archive/handoff-20261106T173623Z.md` (closed 2026-11-06).
 
 ## Shape (by Alex)
 - 2026-09-29: agents run **headless with auto-approved permissions** inside the repo. Nobody can answer a prompt during a run, so an agent that needs input writes the question into the handoff.
@@ -57,6 +57,7 @@ The handoff front matter `status` is the agents' only control signal:
 - `in-progress` with changes outside `docs/handoff/` resets the streak. `in-progress` without any such change counts as nothing to do (and is noted), so an agent that doesn't use `ready-for-review` can't keep the loop spinning.
 - `ready-for-review` increments the streak. `done` from an implementer is treated the same, with a warning.
 - When the streak reaches the number of implementers, every agent has seen the task in its latest state and found nothing: the reviewer runs.
+- The agent that made the last code change therefore gets one more round only to confirm that the others changed nothing. That round is kept (by Alex, 2026-11-06: "it is acceptable to have one empty run"): skipping it would save one round per cycle, but an implementer that stopped with unfinished work of its own would lose the turn to finish it.
 - `blocked` from an implementer sends the task to the reviewer at once, with a note to try resolving the question.
 - If `maxImplementationRoundsPerCycle` rounds pass without a full streak, the reviewer runs anyway, with a note that the cap was hit.
 
