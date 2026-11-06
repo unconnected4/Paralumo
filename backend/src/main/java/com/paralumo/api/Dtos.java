@@ -2,6 +2,7 @@ package com.paralumo.api;
 
 import static io.swagger.v3.oas.annotations.media.Schema.RequiredMode.REQUIRED;
 
+import com.paralumo.service.UserService;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -88,6 +89,8 @@ final class Dtos {
           @NotBlank(message = "password is required")
           @Size(min = 8, message = "password must be at least 8 characters")
           // BCrypt, the password hash, refuses longer input.
-          @MaxUtf8Bytes(value = 72, message = "password must be at most 72 bytes")
+          @MaxUtf8Bytes(
+              value = UserService.MAX_PASSWORD_BYTES,
+              message = "password must be at most 72 bytes")
           @Nullable String password) {}
 }

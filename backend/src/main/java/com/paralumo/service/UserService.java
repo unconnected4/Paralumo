@@ -2,6 +2,7 @@ package com.paralumo.service;
 
 import com.paralumo.persistence.UserEntity;
 import com.paralumo.persistence.UserRepository;
+import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.util.Locale;
 import java.util.Optional;
@@ -16,6 +17,9 @@ import org.springframework.stereotype.Service;
 /** Accounts: registration and password sign-in. Session tokens are handled by the API layer. */
 @Service
 public class UserService {
+
+  /** BCrypt, the password hash, only examines the first 72 UTF-8 bytes. */
+  public static final int MAX_PASSWORD_BYTES = 72;
 
   private final UserRepository users;
   private final PasswordEncoder passwordEncoder;
@@ -60,6 +64,12 @@ public class UserService {
    * @return the user, or empty for an unknown email or a wrong password (deliberately the same)
    */
   public Optional<UserEntity> authenticate(String email, String password) {
+    // BCrypt.checkpw silently truncates at 72 UTF-8 bytes, which would accept a wrong password
+    // that shares its first 72 bytes with a 72-byte stored password.
+    if (password.length() > MAX_PASSWORD_BYTES
+        || password.getBytes(StandardCharsets.UTF_8).length > MAX_PASSWORD_BYTES) {
+      return Optional.empty();
+    }
     String normalized = normalizeEmail(email);
     try {
       authenticationManager.authenticate(

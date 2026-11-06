@@ -133,7 +133,7 @@ class AuthApiTest extends ApiSupport {
   }
 
   @Test
-  void passwordsLongerThanBcryptAcceptsAre422() throws Exception {
+  void passwordsLongerThanBcryptAcceptsAreRejected() throws Exception {
     // 36 Cyrillic letters: 36 characters, 72 bytes, the most BCrypt takes.
     String longest = "пароль".repeat(6);
     String tooLong = longest + "x";
@@ -148,6 +148,13 @@ class AuthApiTest extends ApiSupport {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(credentials("long@example.com", longest)))
         .andExpect(status().isCreated());
+    // BCrypt.checkpw truncates at 72 bytes; login must still reject a wrong password past byte 72.
+    mvc.perform(
+            post("/api/auth/login")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(credentials("long@example.com", tooLong)))
+        .andExpect(status().isUnauthorized())
+        .andExpect(jsonPath("$.detail").value("Invalid email or password"));
   }
 
   @Test
