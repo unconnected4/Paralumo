@@ -62,6 +62,11 @@ Web:
 - `GET /api/game/match?n=6` picks due or weak cards first, then fills from random cards.
 - Match results are logged with `source='match_game'` and only nudge SRS state lightly (e.g. rating=3 on first-attempt match, rating=1 on mistake), because matching is a recognition task and pairs can be solved by elimination.
 
+## Before production
+Items raised in the Step 1 cross-check (`docs/handoff/archive/`, task `step1-crosscheck`) that are not defects in Step 1 but must land before real users, alongside the `AUTH_SECRET` rotation note in [engineering.md](engineering.md#configuration-and-secrets):
+- **Session revocation (F7).** Sessions are stateless JWTs that live 30 days, so logout only clears the cookie, and a copied cookie or a bearer token can't be signed out, nor can a password change end other sessions. Add revocation before bearer clients (Android) or account settings ship: e.g. a `token_version` column on `users` checked by `SessionTokenFilter` (one primary-key read per authenticated request), or server-side sessions.
+- **Brute-force protection on login and register (F9).** No rate limiting or lockout yet. The mechanism (reverse proxy, platform feature, or app-level) depends on the hosting decision, which is TBD (`backend/intent.md`), so decide it together with hosting.
+
 ## Verification
 Testing tiers, CI and local setup are defined in [engineering.md](engineering.md).
 
