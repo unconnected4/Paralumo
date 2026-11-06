@@ -4,6 +4,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import javax.crypto.SecretKey;
@@ -17,6 +18,8 @@ import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
 import org.springframework.security.oauth2.jwt.JwtEncoderParameters;
 import org.springframework.security.oauth2.jwt.JwtException;
+import org.springframework.security.oauth2.jwt.JwtTimestampValidator;
+import org.springframework.security.oauth2.jwt.JwtValidators;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 import org.springframework.stereotype.Component;
@@ -39,7 +42,13 @@ public class SessionTokens {
   public SessionTokens(AuthProperties auth, AppProperties app, Clock clock) {
     SecretKey key = new SecretKeySpec(auth.secret().getBytes(StandardCharsets.UTF_8), "HmacSHA256");
     this.encoder = NimbusJwtEncoder.withSecretKey(key).algorithm(MacAlgorithm.HS256).build();
-    this.decoder = NimbusJwtDecoder.withSecretKey(key).macAlgorithm(MacAlgorithm.HS256).build();
+    NimbusJwtDecoder decoder =
+        NimbusJwtDecoder.withSecretKey(key).macAlgorithm(MacAlgorithm.HS256).build();
+    // The default expiry check reads the system clock; use the injected one, as issue() does.
+    JwtTimestampValidator expiry = new JwtTimestampValidator();
+    expiry.setClock(clock);
+    decoder.setJwtValidator(JwtValidators.createDefaultWithValidators(List.of(expiry)));
+    this.decoder = decoder;
     this.clock = clock;
     this.secureCookie = app.isProduction();
   }

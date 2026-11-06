@@ -47,6 +47,20 @@ class SessionTokensTest {
   }
 
   @Test
+  void expiryFollowsTheInjectedClockNotTheSystemClock() {
+    Instant longAgo = Instant.parse("2020-01-01T00:00:00Z");
+    String issuedLongAgo = tokens(SECRET, longAgo, Environment.TEST).issue(UUID.randomUUID());
+    Instant farAhead = Instant.parse("2100-01-01T00:00:00Z");
+    String issuedFarAhead = tokens(SECRET, farAhead, Environment.TEST).issue(UUID.randomUUID());
+
+    assertThat(tokens(SECRET, longAgo, Environment.TEST).verify(issuedLongAgo)).isPresent();
+    assertThat(
+            tokens(SECRET, farAhead.plus(SessionTokens.LIFETIME).plusSeconds(120), Environment.TEST)
+                .verify(issuedFarAhead))
+        .isEmpty();
+  }
+
+  @Test
   void rejectsGarbage() {
     assertThat(tokens(SECRET, NOW, Environment.TEST).verify("not-a-jwt")).isEmpty();
   }
