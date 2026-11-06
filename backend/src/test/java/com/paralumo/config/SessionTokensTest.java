@@ -66,13 +66,26 @@ class SessionTokensTest {
   }
 
   @Test
-  void cookieIsHttpOnlyLaxAndSecureOnlyInProduction() {
-    ResponseCookie local = tokens(SECRET, NOW, Environment.LOCAL).cookie("t");
-    ResponseCookie production = tokens(SECRET, NOW, Environment.PRODUCTION).cookie("t");
+  void cookieAndClearingCookieAreHttpOnlyLaxScopedToApiAndSecureOnlyInProduction() {
+    SessionTokens localTokens = tokens(SECRET, NOW, Environment.LOCAL);
+    SessionTokens prodTokens = tokens(SECRET, NOW, Environment.PRODUCTION);
+    ResponseCookie local = localTokens.cookie("t");
+    ResponseCookie production = prodTokens.cookie("t");
+    ResponseCookie clearedLocal = localTokens.clearingCookie();
+    ResponseCookie clearedProd = prodTokens.clearingCookie();
 
     assertThat(local.isHttpOnly()).isTrue();
     assertThat(local.getSameSite()).isEqualTo("Lax");
+    assertThat(local.getPath()).isEqualTo("/api");
     assertThat(local.isSecure()).isFalse();
     assertThat(production.isSecure()).isTrue();
+
+    assertThat(clearedLocal.getValue()).isEmpty();
+    assertThat(clearedLocal.getMaxAge()).isZero();
+    assertThat(clearedLocal.isHttpOnly()).isTrue();
+    assertThat(clearedLocal.getSameSite()).isEqualTo("Lax");
+    assertThat(clearedLocal.getPath()).isEqualTo("/api");
+    assertThat(clearedLocal.isSecure()).isFalse();
+    assertThat(clearedProd.isSecure()).isTrue();
   }
 }

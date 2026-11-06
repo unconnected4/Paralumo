@@ -9,6 +9,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.paralumo.IntegrationTest;
 import com.paralumo.config.SessionTokens;
 import jakarta.servlet.http.Cookie;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -120,6 +125,41 @@ class AuthApiTest extends ApiSupport {
                 .content(credentials("LEARNER@example.com", "another-password")))
         .andExpect(status().isConflict())
         .andExpect(jsonPath("$.detail").value("A user with this email already exists"));
+  }
+
+  @Test
+  void registeringWhileAnotherRequestRegistersTheSameEmailIs409() throws Exception {
+    try (Connection other = dataSource.getConnection()) {
+      other.setAutoCommit(false);
+      try (PreparedStatement insert =
+          other.prepareStatement(
+              "INSERT INTO users (id, email, password_hash, created_at)"
+                  + " VALUES (?, 'learner@example.com', 'hash', now())")) {
+        insert.setObject(1, UUID.randomUUID());
+        assertThat(insert.executeUpdate()).isOne();
+      }
+
+      CompletableFuture<MvcResult> registering =
+          CompletableFuture.supplyAsync(
+              () -> {
+                try {
+                  return mvc.perform(
+                          post("/api/auth/register")
+                              .contentType(MediaType.APPLICATION_JSON)
+                              .content(credentials("LEARNER@example.com", PASSWORD)))
+                      .andReturn();
+                } catch (Exception e) {
+                  throw new IllegalStateException(e);
+                }
+              });
+      awaitABlockedQuery();
+      other.commit();
+
+      MvcResult result = registering.get(10, TimeUnit.SECONDS);
+      assertThat(result.getResponse().getStatus()).isEqualTo(409);
+      assertThat(read(result, "$.detail")).isEqualTo("A user with this email already exists");
+      assertThat(result.getResponse().getCookie(SessionTokens.COOKIE_NAME)).isNull();
+    }
   }
 
   @Test
