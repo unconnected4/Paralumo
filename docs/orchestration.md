@@ -25,9 +25,10 @@ scripts/orchestrate/
 AgentsOutput/orchestrator/<UTC ts>-<task>/   per-run logs and rendered prompts (git-ignored)
 ```
 
-`roles.json` has three parts:
+`roles.json` has four parts:
 - `pipeline`: `implementers` (ordered list of role names) and `reviewer` (one role name).
 - `limits`: `maxRounds` (whole run), `maxImplementationRoundsPerCycle` (forces a review when implementers never agree they are finished), `roundTimeoutMinutes`.
+- `env` (optional): environment variables the driver sets for itself, so every agent process inherits them. They are printed in the run summary. Currently `GRADLE_OPTS=-Dorg.gradle.daemon=false`; see "A round that finishes but does not exit".
 - `roles.<name>`: `agent` (the agent name used in commits and handoffs), `command`, `model`, `args` and `prompt` (template path). `args` holds the CLI's own flags with two placeholders the driver fills: `{prompt}` (the one-line pointer to the rendered prompt) and `{model}` (the role's `model`). The model flag stays in `args` because each CLI spells it differently: `claude -p {prompt} --model {model} --dangerously-skip-permissions`, `agy -p {prompt} --model {model} --dangerously-skip-permissions`, `codex exec --model {model} --dangerously-bypass-approvals-and-sandbox {prompt}`. A role without a `model` field must not reference `{model}`; the driver refuses to start otherwise. The chosen model is printed in every round's summary line.
 
 Current roles and agent names: `opus` (Claude Code, `claude-opus-5-5`, agent `ClaudeC-Opus5.5`), `gemini` (Antigravity CLI `agy`, `gemini-4-argon-high`, agent `AgyC-Gemini4Argon`), `gpt` (Codex CLI, `gpt-5.6-terra`, agent `CodexC-GPT5.6Terra`) as implementers in that order, `fable` (Claude Code, `claude-fable-5-1`, agent `ClaudeC-Fable`) as reviewer. The names follow the convention in `AGENTS.md` ("Agent names and output folders"), which is the list of record; a name identifies tool + model and is shared by interactive sessions using the same (by Alex, 2026-10-28). The `agy` flags and model ID have been verified end-to-end. Codex CLI version 0.164.0 accepted the `exec`, `--model`, and `--dangerously-bypass-approvals-and-sandbox` flags; a read-only invocation verified `gpt-5.6-terra` with the signed-in account on 2026-10-28.
@@ -87,6 +88,13 @@ Two ways forward:
 - **Set it aside**: `git stash -u` (or commit it yourself), then run normally.
 
 First seen on 2026-10-28: an Opus round on `step1-backend` was interrupted after about half an hour with the backend scaffold, passing tests and the regenerated web client in the tree, but no handoff update and no commit.
+
+## A round that finishes but does not exit
+Seen on 2026-11-06 in round 3 of `step1-crosscheck`: Codex committed its work and the handoff and printed its final message 11 minutes into the round, but `codex.exe` stayed alive until the driver killed it at the 90-minute timeout, which stops the run. Nothing was lost; the tree was clean and the run could be resumed with `-StartWith opus`.
+
+Most likely cause, not proven: Codex had started Gradle daemons (three `./gradlew check` at once), and one was still running, idle, when the round was killed. Gradle daemons outlive the build by design (three hours idle), and `codex exec` appears not to exit while a process it started is alive. The Claude and Antigravity CLIs exited normally with a daemon left behind. Evidence: Codex's rounds without Gradle (2026-10-28) exited at once; the daemon started by this round (13:50) was still alive after the kill.
+
+Countermeasure: `roles.json` → `env` sets `GRADLE_OPTS=-Dorg.gradle.daemon=false` for all agents. Gradle then forks a single-use daemon that stops at the end of each build (checked: no `java` process remains afterwards, and the build prints no warning). Builds start a few seconds slower. Developers' own shells are unaffected. If a Codex round hangs again with no leftover process, the cause is something else: look at what is still running under `codex.exe` before the timeout.
 
 ## Limits of the first version
 - Sequential only. Parallel roles would need one worktree per agent; not planned until there is a reason.

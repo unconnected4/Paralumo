@@ -188,6 +188,15 @@ if ($MaxRounds -le 0) { $MaxRounds = [int]$cfg.limits.maxRounds }
 $maxImplRounds = [int]$cfg.limits.maxImplementationRoundsPerCycle
 $timeoutMs = [int]$cfg.limits.roundTimeoutMinutes * 60 * 1000
 
+# Optional "env" object in the config: variables set for this process, so every agent inherits them.
+$envLabels = @()
+if (($cfg.PSObject.Properties.Name -contains 'env') -and $cfg.env) {
+    foreach ($p in $cfg.env.PSObject.Properties) {
+        [Environment]::SetEnvironmentVariable($p.Name, [string]$p.Value, 'Process')
+        $envLabels += "$($p.Name)=$($p.Value)"
+    }
+}
+
 $phase = 'implement'
 $implIndex = 0
 if ($StartWith) {
@@ -208,6 +217,7 @@ $loopStart = (Invoke-Git @('rev-parse', 'HEAD')) | Select-Object -First 1
 Write-Summary "# Orchestrator run $runStamp"
 Write-Summary "Task: $Task | start: $loopStart | config: $Config | max rounds: $MaxRounds"
 Write-Summary "Implementers: $implementerLabels | reviewer: $reviewer ($($cfg.roles.$reviewer.agent))"
+if ($envLabels.Count -gt 0) { Write-Summary "Environment for agents: $($envLabels -join '; ')" }
 Write-Summary ''
 
 # ---------------------------------------------------------------- loop

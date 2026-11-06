@@ -4,8 +4,8 @@ title: Automate the implement/review loop between agents
 status: in-progress
 branch: main
 started: 2026-09-29T14:39:07Z
-last_updated: 2026-11-06T12:20:00Z
-last_commit: 9a6b99e
+last_updated: 2026-11-06T15:35:00Z
+last_commit: dc8945e
 agents: [ClaudeC-Fable, AgyC-Gemini4Argon, CodexC-GPT5.6Terra]
 related_decisions: [docs/orchestration.md, AGENTS.md, docs/handoff/TEMPLATE.md]
 ---
@@ -26,7 +26,9 @@ The `gemini` role has been switched to the **Antigravity CLI (`agy`)** (`1.2.11`
 
 Found in that run and fixed: non-ASCII text was garbled. The summary showed `Γ£ô` for `✓` (git output decoded with the console's OEM code page), and the rendered review prompt showed `â†’` for `→` (templates read as ANSI). `Invoke-Git` now switches the console output encoding to UTF-8 for the call and restores it; every `Get-Content` of repo files and logs passes `-Encoding UTF8`.
 
-Not yet verified: the streak with three implementers, the per-cycle cap, implementer `blocked` → review, reviewer `in-progress` and `blocked`, the stale `last_commit` warning, and `agy` / `codex` as committing implementers on a real task (Codex did one handoff-only round on 2026-10-28).
+**First full-pipeline run, 2026-11-06** (`AgentsOutput/orchestrator/20261106T123103Z-step1-crosscheck`, default `roles.json`). Rounds 1 to 3 worked: Opus (19 min, 7 commits), Gemini through `agy` (56 min, 9 commits) and Codex (2 commits) each did a full review, fixed findings with tests and updated the handoff; the driver routed `in-progress` with code changes to the next implementer each time. This verifies `agy` and `codex` as committing implementers. The run then stopped: Codex finished at 13:57 UTC but `codex.exe` did not exit, and the driver killed it at the 90-minute timeout (15:16). Most likely cause: a Gradle daemon started by Codex was still alive; details and evidence in `docs/orchestration.md` → "A round that finishes but does not exit". Countermeasure: a new optional `env` object in `roles.json`, applied by the driver to every agent, sets `GRADLE_OPTS=-Dorg.gradle.daemon=false`. Tested: a stand-in role in a scratch clone received the variables (including a value with a space); a config without `env` still loads; with the variable set, `./gradlew spotlessCheck test` passed and left no `java` process. Not yet confirmed: that this stops the Codex hang. Only the next Codex round can show it.
+
+Not yet verified: the nothing-to-do streak with three implementers, the per-cycle cap, implementer `blocked` → review, reviewer `in-progress` and `blocked`, and the stale `last_commit` warning.
 
 ## Done
 - Design agreed with Alex and recorded in `docs/orchestration.md`, 25d1652.
@@ -71,7 +73,7 @@ Not yet verified: the streak with three implementers, the per-cycle cap, impleme
 - ~~For Alex: the routing paths that need a committing agent are untested, because the interactive Claude Code session (auto mode) is not allowed to create a stand-in script that commits on its own. Test them with such a script yourself, or accept the first real run as the test?~~ → First real run accepted as the test (by Alex, 2026-10-28). Alex ran the loop on this task with `-StartWith gpt`: the Codex round committed a handoff-only update and the driver correctly counted it as "nothing to do"; the following Opus round failed at startup because the Claude CLI's OAuth session had expired (`claude auth status` → `loggedIn: false`). Not a driver bug: sign in again with `claude auth login` and rerun.
 
 ## Next step
-1. Run the full pipeline (all three implementers, default `roles.json`) on the next real task, `e2e-smoke`: `powershell -ExecutionPolicy Bypass -File scripts/orchestrate/orchestrate.ps1 -Task e2e-smoke`. This is the first run that exercises `agy` and `codex` as committing implementers, the three-implementer streak, and (if Fable has findings) a second cycle.
+1. Resume the full-pipeline run on `step1-crosscheck`, which stopped on a timeout after round 3 (see Current state): `powershell -ExecutionPolicy Bypass -File scripts/orchestrate/orchestrate.ps1 -Task step1-crosscheck`. It starts with Opus, which is next in the order anyway. Watch the Codex round: if it exits within a minute or so of its last commit, the Gradle-daemon explanation holds; if it hangs again, inspect the processes under `codex.exe` before the timeout.
 2. Read that run's `summary.md` and commits, fix what the real agents got wrong, then close this task: the acceptance criterion (one implementation pass and one review of a real task, end to end) was met on 2026-11-06 with one implementer, so only step 1 stands between this handoff and the archive.
 3. Still unverified by any run: three-implementer streak, per-cycle cap, implementer `blocked` → review, reviewer `in-progress` (findings → new cycle) and reviewer `blocked`, stale `last_commit` warning.
 
@@ -92,6 +94,7 @@ Not yet verified: the streak with three implementers, the per-cycle cap, impleme
 
 - 2026-11-06T10:13:03Z ClaudeC-Fable: Alex's rerun on `step1-backend` was refused for a dirty tree: the 2026-10-28 17:42 Opus round had been interrupted with its work uncommitted. Added the unfinished-run hint and `-AdoptUncommitted`, documented the recovery, set status back to in-progress (auth blocker is gone).
 - 2026-11-06T12:20:00Z ClaudeC-Fable: Checked the state after Alex's runs: Opus adopted and committed the backend (27cb309), then the first complete orchestrated run closed `step1-backend` in two rounds. Recorded what it verified, fixed the UTF-8 decoding of git output and templates that it exposed, closed the sign-in question, pointed Next step at a full-pipeline run on `e2e-smoke`.
+- 2026-11-06T15:35:00Z ClaudeC-Fable: Diagnosed why the full-pipeline run on `step1-crosscheck` stopped: Codex's round finished but its process never exited (probably held by a Gradle daemon) and was killed at the timeout. Added the `env` object to `roles.json` with the Gradle no-daemon setting, tested it, documented the incident.
 
 ## Outcome
 <!-- Filled in only when archiving. -->

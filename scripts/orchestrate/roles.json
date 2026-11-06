@@ -8,6 +8,9 @@
     "maxImplementationRoundsPerCycle": 9,
     "roundTimeoutMinutes": 90
   },
+  "env": {
+    "GRADLE_OPTS": "-Dorg.gradle.daemon=false"
+  },
   "roles": {
     "opus": {
       "agent": "ClaudeC-Opus5.5",
