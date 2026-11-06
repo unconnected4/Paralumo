@@ -92,5 +92,10 @@ final class Dtos {
           @MaxUtf8Bytes(
               value = UserService.MAX_PASSWORD_BYTES,
               message = "password must be at most 72 bytes")
-          @Nullable String password) {}
+          @Nullable String password) {
+
+    RegisterRequest {
+      email = email == null ? null : email.trim();
+    }
+  }
 }

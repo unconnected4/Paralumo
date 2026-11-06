@@ -23,7 +23,7 @@ class AuthApiTest extends ApiSupport {
         mvc.perform(
                 post("/api/auth/register")
                     .contentType(MediaType.APPLICATION_JSON)
-                    .content(credentials("Learner@Example.com", PASSWORD)))
+                    .content(credentials("  Learner@Example.com  ", PASSWORD)))
             .andExpect(status().isCreated())
             .andExpect(jsonPath("$.email").value("learner@example.com"))
             .andExpect(jsonPath("$.id").isString())
@@ -128,6 +128,12 @@ class AuthApiTest extends ApiSupport {
             jsonPath("$.detail")
                 .value(
                     "email must be a valid email address; password must be at least 8 characters"));
+    mvc.perform(
+            post("/api/auth/register")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(credentials("   ", PASSWORD)))
+        .andExpect(status().isUnprocessableContent())
+        .andExpect(jsonPath("$.detail").value("email is required"));
     mvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON).content("{}"))
         .andExpect(status().isUnprocessableContent());
   }
