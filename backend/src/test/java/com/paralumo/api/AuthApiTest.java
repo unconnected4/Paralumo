@@ -151,6 +151,30 @@ class AuthApiTest extends ApiSupport {
   }
 
   @Test
+  void bodiesAnHtmlFormCanSendAreRejected() throws Exception {
+    // The CSRF decision (backend/intent.md) relies on this: a cross-site form can post
+    // text/plain, form-urlencoded or multipart, never application/json.
+    Cookie session = register("learner@example.com");
+    for (MediaType formType :
+        new MediaType[] {
+          MediaType.TEXT_PLAIN, MediaType.APPLICATION_FORM_URLENCODED, MediaType.MULTIPART_FORM_DATA
+        }) {
+      mvc.perform(
+              post("/api/auth/login")
+                  .contentType(formType)
+                  .content(credentials("learner@example.com", PASSWORD)))
+          .andExpect(status().isUnsupportedMediaType())
+          .andExpect(jsonPath("$.detail").isString());
+      mvc.perform(
+              post("/api/cards")
+                  .cookie(session)
+                  .contentType(formType)
+                  .content("{\"sense_id\":\"x\"}"))
+          .andExpect(status().isUnsupportedMediaType());
+    }
+  }
+
+  @Test
   void logoutClearsTheCookie() throws Exception {
     MvcResult result =
         mvc.perform(post("/api/auth/logout")).andExpect(status().isNoContent()).andReturn();
