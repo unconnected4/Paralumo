@@ -24,6 +24,26 @@ describe('API client (interim Step 0)', () => {
     await expect(response.json()).resolves.toEqual({ query: '', lexemes: [] });
   });
 
+  it('mock 404 and malformed-body details match the backend wording', async () => {
+    await expect(lookup('  Zzyzx ')).rejects.toMatchObject({
+      status: 404,
+      message: 'Word "zzyzx" not found',
+    });
+    await expect(saveCard('sense_unknown')).rejects.toMatchObject({
+      status: 404,
+      message: 'Sense not found',
+    });
+    const malformed = await fetch(`${globalThis.location.origin}/api/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: '{',
+    });
+    expect(malformed.status).toBe(422);
+    await expect(malformed.json()).resolves.toMatchObject({
+      detail: 'Request body is missing or not valid JSON',
+    });
+  });
+
   it('listCards returns saved cards', async () => {
     const cards = await listCards();
     expect(Array.isArray(cards)).toBe(true);

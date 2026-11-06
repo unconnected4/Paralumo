@@ -115,7 +115,7 @@ export const handlers = [
 
     const fixture = MOCK_DICTIONARY_FIXTURES[q];
     if (!fixture) {
-      return problem(404, `Word '${q}' not found`);
+      return problem(404, `Word "${q}" not found`);
     }
 
     // Dynamic overlay for `saved` state (P12). Saved is per-user, so nothing is saved when signed out.
@@ -152,7 +152,7 @@ export const handlers = [
 
     const body = await readJsonObject(request);
     if (!body) {
-      return problem(422, 'Request body is missing or malformed JSON');
+      return problem(422, 'Request body is missing or not valid JSON');
     }
     const senseId = typeof body.sense_id === 'string' ? body.sense_id : '';
     if (!senseId.trim()) {
@@ -161,7 +161,7 @@ export const handlers = [
 
     const match = findSenseAcrossFixtures(senseId);
     if (!match) {
-      return problem(404, `Sense '${senseId}' not found`);
+      return problem(404, 'Sense not found');
     }
 
     const userCards = getCardsForUser(currentUser.id);
@@ -216,7 +216,7 @@ export const handlers = [
   http.post('/api/auth/login', async ({ request }) => {
     const body = await readJsonObject(request);
     if (!body) {
-      return problem(422, 'Request body is missing or malformed JSON');
+      return problem(422, 'Request body is missing or not valid JSON');
     }
     const rawEmail = typeof body.email === 'string' ? body.email : '';
     const password = typeof body.password === 'string' ? body.password : '';
@@ -246,7 +246,7 @@ export const handlers = [
   http.post('/api/auth/register', async ({ request }) => {
     const body = await readJsonObject(request);
     if (!body) {
-      return problem(422, 'Request body is missing or malformed JSON');
+      return problem(422, 'Request body is missing or not valid JSON');
     }
     const rawEmail = typeof body.email === 'string' ? body.email : '';
     const password = typeof body.password === 'string' ? body.password : '';
