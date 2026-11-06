@@ -107,6 +107,7 @@ class CardApiTest extends ApiSupport {
   @Test
   void listsNewestFirst() throws Exception {
     save(learner, runSenseId);
+    jdbc.update("UPDATE user_cards SET created_at = created_at - interval '1 minute'");
     save(learner, bankSenseId);
 
     mvc.perform(get("/api/cards").cookie(learner))
@@ -127,6 +128,46 @@ class CardApiTest extends ApiSupport {
 
     save(learner, runSenseId).andExpect(status().isCreated()).andExpect(jsonPath("$.id").value(id));
     mvc.perform(get("/api/cards").cookie(learner)).andExpect(jsonPath("$[0].id").value(id));
+  }
+
+  @Test
+  void savedCardKeepsItsCopiedDataAndNotesAcrossSenseChangesAndRestore() throws Exception {
+    MvcResult saved = save(learner, runSenseId).andExpect(status().isCreated()).andReturn();
+    UUID cardId = UUID.fromString(read(saved, "$.id"));
+
+    jdbc.update(
+        """
+        UPDATE user_cards
+        SET created_at = '2026-01-15T10:00:00Z', notes = ?, custom_example = ?
+        WHERE id = ?
+        """,
+        "irregular: run-ran-run",
+        "Run the check before committing.",
+        cardId);
+    jdbc.update("UPDATE lexemes SET transcription = 'changed' WHERE lemma = 'run'");
+    jdbc.update("UPDATE senses SET translation_ru = 'изменённый' WHERE source_key = ?", runSenseId);
+
+    mvc.perform(get("/api/cards").cookie(learner))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$[0].created_at").value("2026-01-15T10:00:00Z"))
+        .andExpect(jsonPath("$[0].transcription").value("rʌn"))
+        .andExpect(jsonPath("$[0].translation_ru").value("бежать"))
+        .andExpect(jsonPath("$[0].notes").value("irregular: run-ran-run"));
+
+    mvc.perform(delete("/api/cards/{id}", cardId).cookie(learner))
+        .andExpect(status().isNoContent());
+
+    save(learner, runSenseId)
+        .andExpect(status().isCreated())
+        .andExpect(jsonPath("$.id").value(cardId.toString()))
+        .andExpect(jsonPath("$.created_at").value("2026-01-15T10:00:00Z"))
+        .andExpect(jsonPath("$.transcription").value("rʌn"))
+        .andExpect(jsonPath("$.translation_ru").value("бежать"))
+        .andExpect(jsonPath("$.notes").value("irregular: run-ran-run"));
+    assertThat(
+            jdbc.queryForObject(
+                "SELECT custom_example FROM user_cards WHERE id = ?", String.class, cardId))
+        .isEqualTo("Run the check before committing.");
   }
 
   @Test
