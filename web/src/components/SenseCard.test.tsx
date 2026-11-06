@@ -14,7 +14,7 @@ describe('SenseCard', () => {
   };
 
   it('renders translation, synonyms, meanings, and examples', () => {
-    render(<SenseCard sense={sampleSense} onSave={vi.fn()} />);
+    render(<SenseCard sense={sampleSense} onSave={vi.fn()} onUnsave={vi.fn()} />);
 
     expect(screen.getByText('бежать')).toBeInTheDocument();
     expect(screen.getByText('(мчаться, нестись)')).toBeInTheDocument();
@@ -25,20 +25,32 @@ describe('SenseCard', () => {
 
   it('renders Save button when not saved and triggers onSave callback', () => {
     const handleSave = vi.fn();
-    render(<SenseCard sense={sampleSense} onSave={handleSave} />);
+    render(<SenseCard sense={sampleSense} onSave={handleSave} onUnsave={vi.fn()} />);
 
-    const saveBtn = screen.getByRole('button', { name: /save/i });
+    const saveBtn = screen.getByRole('button', { name: 'Save' });
     expect(saveBtn).toBeInTheDocument();
 
     fireEvent.click(saveBtn);
     expect(handleSave).toHaveBeenCalledWith('sense_test_1');
   });
 
-  it('renders Saved badge when sense is saved', () => {
-    const savedSense = { ...sampleSense, saved: true };
-    render(<SenseCard sense={savedSense} onSave={vi.fn()} />);
+  const savedSense: Sense = { ...sampleSense, saved: true, card_id: 'card_test_1' };
 
-    expect(screen.getByText('Saved')).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /save/i })).not.toBeInTheDocument();
+  it('renders a Saved button when the sense is saved and unsaves its card on click', () => {
+    const handleSave = vi.fn();
+    const handleUnsave = vi.fn();
+    render(<SenseCard sense={savedSense} onSave={handleSave} onUnsave={handleUnsave} />);
+
+    expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Saved' }));
+    expect(handleUnsave).toHaveBeenCalledWith('card_test_1');
+    expect(handleSave).not.toHaveBeenCalled();
+  });
+
+  it('disables the button while the card is being removed', () => {
+    render(<SenseCard sense={savedSense} onSave={vi.fn()} onUnsave={vi.fn()} isRemoving />);
+
+    expect(screen.getByRole('button', { name: 'Removing...' })).toBeDisabled();
   });
 });

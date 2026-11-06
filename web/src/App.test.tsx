@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { describe, it, expect, beforeEach } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import App from './App';
-import { logout } from './api';
+import { listCards, logout } from './api';
 import { server } from './test/setup';
 
 describe('Paralumo App', () => {
@@ -119,6 +119,25 @@ describe('Paralumo App', () => {
     expect(window.location.search).toBe('?q=run');
     // The lookup was cached while signed out; signing in refetches it with this user's saved flags.
     expect(await screen.findByText('Saved')).toBeInTheDocument();
+  });
+
+  it('unsaves a saved sense from the search page and saves it again', async () => {
+    const user = userEvent.setup();
+    window.history.pushState({}, '', '/?q=run');
+    render(<App />);
+
+    // The signed-in mock user starts with one saved sense of "run".
+    await user.click(await screen.findByRole('button', { name: 'Saved' }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: 'Saved' })).not.toBeInTheDocument();
+    });
+    expect(await listCards()).toEqual([]);
+
+    await user.click(screen.getAllByRole('button', { name: 'Save' })[0]);
+
+    expect(await screen.findByRole('button', { name: 'Saved' })).toBeInTheDocument();
+    expect(await listCards()).toHaveLength(1);
   });
 
   it('does not show mock-only labels in the UI', async () => {

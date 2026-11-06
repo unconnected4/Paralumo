@@ -289,7 +289,7 @@
     },
     "/api/dictionary/lookup" : {
       "get" : {
-        "description" : "An empty query returns no lexemes. `saved` reflects the signed-in user.",
+        "description" : "An empty query returns no lexemes. `saved` and `card_id` reflect the signed-in user.",
         "operationId" : "lookup",
         "parameters" : [ {
           "in" : "query",
@@ -540,6 +540,10 @@
       },
       "Sense" : {
         "properties" : {
+          "card_id" : {
+            "type" : "string",
+            "description" : "The current user's card for this sense, present exactly when `saved` is true; pass it to DELETE /api/cards/{cardId} to unsave"
+          },
           "examples" : {
             "type" : "array",
             "items" : {

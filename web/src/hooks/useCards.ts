@@ -13,21 +13,22 @@ export function useCards() {
     enabled: isAuthenticated,
   });
 
+  // A mutation stays pending until this resolves, so a button goes straight from "Saving..." to
+  // '✓' (or from "Removing..." to '+') without showing its old state while the lookup refetches.
+  const refetchCardsAndLookups = () =>
+    Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['cards'] }),
+      queryClient.invalidateQueries({ queryKey: ['dictionary'] }),
+    ]);
+
   const saveMutation = useMutation({
     mutationFn: (senseId: string) => saveCard(senseId),
-    onSuccess: () => {
-      // Invalidate both cards list and dictionary results so '+' turns into '✓' immediately
-      queryClient.invalidateQueries({ queryKey: ['cards'] });
-      queryClient.invalidateQueries({ queryKey: ['dictionary'] });
-    },
+    onSuccess: refetchCardsAndLookups,
   });
 
   const deleteMutation = useMutation({
     mutationFn: (cardId: string) => deleteCard(cardId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['cards'] });
-      queryClient.invalidateQueries({ queryKey: ['dictionary'] });
-    },
+    onSuccess: refetchCardsAndLookups,
   });
 
   return {

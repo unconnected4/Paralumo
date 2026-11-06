@@ -35,7 +35,12 @@ final class Dtos {
       @Schema(
               requiredMode = REQUIRED,
               description = "Whether the current user has saved this sense (false when signed out)")
-          boolean saved) {}
+          boolean saved,
+      @Schema(
+              description =
+                  "The current user's card for this sense, present exactly when `saved` is true;"
+                      + " pass it to DELETE /api/cards/{cardId} to unsave")
+          @Nullable String cardId) {}
 
   @Schema(name = "Lexeme")
   record LexemeDto(

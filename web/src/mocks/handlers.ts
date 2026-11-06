@@ -118,16 +118,17 @@ export const handlers = [
       return problem(404, `Word "${q}" not found`);
     }
 
-    // Dynamic overlay for `saved` state (P12). Saved is per-user, so nothing is saved when signed out.
+    // Dynamic overlay for the saved state (P12): `saved`, plus `card_id` exactly when saved.
+    // Saved is per-user, so nothing is saved when signed out.
     const userCards = currentUser ? getCardsForUser(currentUser.id) : [];
-    const savedSenseIds = new Set(userCards.map((c) => c.sense_id));
+    const cardIdBySenseId = new Map(userCards.map((c) => [c.sense_id, c.id]));
 
     const overlaidLexemes: Lexeme[] = fixture.map((lex) => ({
       ...lex,
-      senses: lex.senses.map((s) => ({
-        ...s,
-        saved: currentUser !== null && savedSenseIds.has(s.id),
-      })),
+      senses: lex.senses.map((s) => {
+        const cardId = cardIdBySenseId.get(s.id);
+        return { ...s, saved: cardId !== undefined, card_id: cardId };
+      }),
     }));
 
     return HttpResponse.json({

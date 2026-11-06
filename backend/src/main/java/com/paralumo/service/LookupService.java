@@ -5,7 +5,7 @@ import com.paralumo.provider.ProviderLexeme;
 import com.paralumo.provider.ProviderSense;
 import java.util.List;
 import java.util.Locale;
-import java.util.Set;
+import java.util.Map;
 import java.util.UUID;
 import org.jspecify.annotations.Nullable;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -24,9 +24,12 @@ public class LookupService {
     this.cards = cards;
   }
 
-  /** The entries found for a word, and which of their senses the user has saved. */
+  /**
+   * The entries found for a word, and the user's cards for the senses they have saved (sense id to
+   * card id).
+   */
   public record LookupResult(
-      String query, List<ProviderLexeme> lexemes, Set<String> savedSenseIds) {}
+      String query, List<ProviderLexeme> lexemes, Map<String, UUID> savedCardIds) {}
 
   /**
    * Looks up a word. An empty query has no entries; an unknown word is a {@link NotFoundException}.
@@ -36,7 +39,7 @@ public class LookupService {
   public LookupResult lookup(String rawQuery, @Nullable UUID userId) {
     String query = rawQuery.trim().toLowerCase(Locale.ROOT);
     if (query.isEmpty()) {
-      return new LookupResult("", List.of(), Set.of());
+      return new LookupResult("", List.of(), Map.of());
     }
     List<ProviderLexeme> found =
         provider
@@ -48,10 +51,10 @@ public class LookupService {
       // A concurrent lookup of the same new word inserted the rows first; now they exist.
       catalog.record(provider.source(), found);
     }
-    Set<String> saved =
+    Map<String, UUID> saved =
         userId == null
-            ? Set.of()
-            : cards.savedSenseIds(
+            ? Map.of()
+            : cards.savedCardIds(
                 userId,
                 found.stream()
                     .flatMap(lexeme -> lexeme.senses().stream())

@@ -119,7 +119,7 @@ export interface paths {
         };
         /**
          * Look up an English word
-         * @description An empty query returns no lexemes. `saved` reflects the signed-in user.
+         * @description An empty query returns no lexemes. `saved` and `card_id` reflect the signed-in user.
          */
         get: operations["lookup"];
         put?: never;
@@ -220,6 +220,8 @@ export interface components {
             sense_id: string;
         };
         Sense: {
+            /** @description The current user's card for this sense, present exactly when `saved` is true; pass it to DELETE /api/cards/{cardId} to unsave */
+            card_id?: string;
             examples?: components["schemas"]["ExampleSentence"][];
             /** @description Opaque sense id; pass it to POST /api/cards */
             id: string;

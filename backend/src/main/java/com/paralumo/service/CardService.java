@@ -7,8 +7,8 @@ import com.paralumo.persistence.SenseRepository;
 import java.time.Clock;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -95,14 +95,13 @@ public class CardService {
     card.markDeleted(clock.instant());
   }
 
-  /** Which of the given public sense ids the user has an active card for. */
+  /** The user's active cards for the given public sense ids: sense id to card id. */
   @Transactional(readOnly = true)
-  public Set<String> savedSenseIds(UUID userId, Collection<String> senseIds) {
+  public Map<String, UUID> savedCardIds(UUID userId, Collection<String> senseIds) {
     if (senseIds.isEmpty()) {
-      return Set.of();
+      return Map.of();
     }
     return cards.findByUserIdAndSenseKeyInAndDeletedAtIsNull(userId, senseIds).stream()
-        .map(CardEntity::getSenseKey)
-        .collect(Collectors.toUnmodifiableSet());
+        .collect(Collectors.toUnmodifiableMap(CardEntity::getSenseKey, CardEntity::getId));
   }
 }

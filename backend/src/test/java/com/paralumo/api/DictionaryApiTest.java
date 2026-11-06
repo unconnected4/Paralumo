@@ -32,6 +32,7 @@ class DictionaryApiTest extends ApiSupport {
         .andExpect(jsonPath("$.lexemes[0].senses[0].meanings_en[0]").isString())
         .andExpect(jsonPath("$.lexemes[0].senses[0].examples[0].en").isString())
         .andExpect(jsonPath("$.lexemes[0].senses[0].saved").value(false))
+        .andExpect(jsonPath("$.lexemes[0].senses[0].card_id").doesNotExist())
         .andExpect(jsonPath("$.lexemes[1].pos").value("noun"));
   }
 

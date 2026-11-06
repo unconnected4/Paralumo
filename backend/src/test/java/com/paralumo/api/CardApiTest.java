@@ -37,23 +37,27 @@ class CardApiTest extends ApiSupport {
 
   @Test
   void savingASenseCopiesItIntoACard() throws Exception {
-    save(learner, runSenseId)
-        .andExpect(status().isCreated())
-        .andExpect(jsonPath("$.id").isString())
-        .andExpect(jsonPath("$.sense_id").value(runSenseId))
-        .andExpect(jsonPath("$.lemma").value("run"))
-        .andExpect(jsonPath("$.pos").value("verb"))
-        .andExpect(jsonPath("$.transcription").value("rʌn"))
-        .andExpect(jsonPath("$.translation_ru").value("бежать"))
-        .andExpect(jsonPath("$.synonyms_ru[0]").value("мчаться"))
-        .andExpect(jsonPath("$.meanings_en[0]").isString())
-        .andExpect(jsonPath("$.examples[0].ru").isString())
-        .andExpect(jsonPath("$.created_at").isString())
-        .andExpect(jsonPath("$.notes").doesNotExist());
+    MvcResult saved =
+        save(learner, runSenseId)
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.id").isString())
+            .andExpect(jsonPath("$.sense_id").value(runSenseId))
+            .andExpect(jsonPath("$.lemma").value("run"))
+            .andExpect(jsonPath("$.pos").value("verb"))
+            .andExpect(jsonPath("$.transcription").value("rʌn"))
+            .andExpect(jsonPath("$.translation_ru").value("бежать"))
+            .andExpect(jsonPath("$.synonyms_ru[0]").value("мчаться"))
+            .andExpect(jsonPath("$.meanings_en[0]").isString())
+            .andExpect(jsonPath("$.examples[0].ru").isString())
+            .andExpect(jsonPath("$.created_at").isString())
+            .andExpect(jsonPath("$.notes").doesNotExist())
+            .andReturn();
 
     mvc.perform(get("/api/dictionary/lookup").param("q", "run").cookie(learner))
         .andExpect(jsonPath("$.lexemes[0].senses[0].saved").value(true))
-        .andExpect(jsonPath("$.lexemes[0].senses[1].saved").value(false));
+        .andExpect(jsonPath("$.lexemes[0].senses[0].card_id").value(read(saved, "$.id")))
+        .andExpect(jsonPath("$.lexemes[0].senses[1].saved").value(false))
+        .andExpect(jsonPath("$.lexemes[0].senses[1].card_id").doesNotExist());
   }
 
   @Test
@@ -123,11 +127,26 @@ class CardApiTest extends ApiSupport {
     mvc.perform(delete("/api/cards/{id}", id).cookie(learner)).andExpect(status().isNoContent());
     mvc.perform(get("/api/cards").cookie(learner)).andExpect(jsonPath("$").isEmpty());
     mvc.perform(get("/api/dictionary/lookup").param("q", "run").cookie(learner))
-        .andExpect(jsonPath("$.lexemes[0].senses[0].saved").value(false));
+        .andExpect(jsonPath("$.lexemes[0].senses[0].saved").value(false))
+        .andExpect(jsonPath("$.lexemes[0].senses[0].card_id").doesNotExist());
     mvc.perform(delete("/api/cards/{id}", id).cookie(learner)).andExpect(status().isNotFound());
 
     save(learner, runSenseId).andExpect(status().isCreated()).andExpect(jsonPath("$.id").value(id));
     mvc.perform(get("/api/cards").cookie(learner)).andExpect(jsonPath("$[0].id").value(id));
+  }
+
+  @Test
+  void aSavedSenseCanBeUnsavedWithTheCardIdFromTheLookup() throws Exception {
+    save(learner, runSenseId).andExpect(status().isCreated());
+    MvcResult lookedUp =
+        mvc.perform(get("/api/dictionary/lookup").param("q", "run").cookie(learner)).andReturn();
+
+    mvc.perform(
+            delete("/api/cards/{id}", read(lookedUp, "$.lexemes[0].senses[0].card_id"))
+                .cookie(learner))
+        .andExpect(status().isNoContent());
+
+    mvc.perform(get("/api/cards").cookie(learner)).andExpect(jsonPath("$").isEmpty());
   }
 
   @Test
@@ -228,14 +247,24 @@ class CardApiTest extends ApiSupport {
 
     mvc.perform(get("/api/cards").cookie(other)).andExpect(jsonPath("$").isEmpty());
     mvc.perform(get("/api/dictionary/lookup").param("q", "run").cookie(other))
-        .andExpect(jsonPath("$.lexemes[0].senses[0].saved").value(false));
+        .andExpect(jsonPath("$.lexemes[0].senses[0].saved").value(false))
+        .andExpect(jsonPath("$.lexemes[0].senses[0].card_id").doesNotExist());
     mvc.perform(delete("/api/cards/{id}", learnersCard).cookie(other))
         .andExpect(status().isNotFound());
 
-    save(other, runSenseId)
-        .andExpect(status().isCreated())
-        .andExpect(jsonPath("$.id").value(not(learnersCard)));
+    String othersCard =
+        read(
+            save(other, runSenseId)
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.id").value(not(learnersCard)))
+                .andReturn(),
+            "$.id");
     save(other, bankSenseId);
+
+    mvc.perform(get("/api/dictionary/lookup").param("q", "run").cookie(other))
+        .andExpect(jsonPath("$.lexemes[0].senses[0].card_id").value(othersCard));
+    mvc.perform(get("/api/dictionary/lookup").param("q", "run").cookie(learner))
+        .andExpect(jsonPath("$.lexemes[0].senses[0].card_id").value(learnersCard));
 
     mvc.perform(get("/api/cards").cookie(learner))
         .andExpect(jsonPath("$.length()").value(1))

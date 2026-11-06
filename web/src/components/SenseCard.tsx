@@ -4,11 +4,21 @@ import type { Sense } from '../api/types';
 interface SenseCardProps {
   sense: Sense;
   onSave: (senseId: string) => void;
+  onUnsave: (cardId: string) => void;
   isSaving?: boolean;
+  isRemoving?: boolean;
 }
 
-export function SenseCard({ sense, onSave, isSaving = false }: SenseCardProps) {
-  const isSaved = sense.saved;
+export function SenseCard({
+  sense,
+  onSave,
+  onUnsave,
+  isSaving = false,
+  isRemoving = false,
+}: SenseCardProps) {
+  // The API sends `card_id` exactly when the sense is saved; it is what unsaving needs.
+  const cardId = sense.card_id;
+  const isSaved = cardId !== undefined;
 
   return (
     <div
@@ -50,16 +60,28 @@ export function SenseCard({ sense, onSave, isSaving = false }: SenseCardProps) {
           )}
         </div>
 
-        {/* Action Button: '+' -> '✓' */}
+        {/* Action button: '+' saves, '✓' unsaves */}
         <div>
           {isSaved ? (
-            <span
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-300"
-              title="Saved to My Words"
+            <button
+              type="button"
+              onClick={() => onUnsave(cardId)}
+              disabled={isRemoving}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-300 hover:bg-emerald-200 active:bg-emerald-300 transition-colors disabled:opacity-60 focus:outline-hidden focus:ring-2 focus:ring-emerald-500 focus:ring-offset-1"
+              title="Remove from My Words"
             >
-              <Check className="w-4 h-4 text-emerald-600 stroke-[2.5]" />
-              Saved
-            </span>
+              {isRemoving ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Removing...
+                </>
+              ) : (
+                <>
+                  <Check className="w-4 h-4 stroke-[2.5]" />
+                  Saved
+                </>
+              )}
+            </button>
           ) : (
             <button
               type="button"

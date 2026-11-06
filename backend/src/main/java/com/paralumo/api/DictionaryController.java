@@ -5,10 +5,12 @@ import com.paralumo.api.Dtos.LexemeDto;
 import com.paralumo.api.Dtos.LookupResponse;
 import com.paralumo.api.Dtos.SenseDto;
 import com.paralumo.config.CurrentUser;
+import com.paralumo.provider.ProviderSense;
 import com.paralumo.service.LookupService;
 import com.paralumo.service.LookupService.LookupResult;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import java.util.UUID;
 import org.jspecify.annotations.Nullable;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -30,7 +32,8 @@ class DictionaryController {
   @Operation(
       operationId = "lookup",
       summary = "Look up an English word",
-      description = "An empty query returns no lexemes. `saved` reflects the signed-in user.")
+      description =
+          "An empty query returns no lexemes. `saved` and `card_id` reflect the signed-in user.")
   @ApiResponse(responseCode = "200", description = "Entries grouped by part of speech")
   @ApiResponse(responseCode = "404", description = "Unknown word")
   @GetMapping("/lookup")
@@ -48,18 +51,19 @@ class DictionaryController {
                         lexeme.pos(),
                         lexeme.transcription(),
                         lexeme.senses().stream()
-                            .map(
-                                sense ->
-                                    new SenseDto(
-                                        sense.id(),
-                                        sense.translationRu(),
-                                        sense.synonymsRu(),
-                                        sense.meaningsEn(),
-                                        sense.examples().stream()
-                                            .map(e -> new ExampleSentenceDto(e.en(), e.ru()))
-                                            .toList(),
-                                        result.savedSenseIds().contains(sense.id())))
+                            .map(sense -> toDto(sense, result.savedCardIds().get(sense.id())))
                             .toList()))
             .toList());
+  }
+
+  private static SenseDto toDto(ProviderSense sense, @Nullable UUID cardId) {
+    return new SenseDto(
+        sense.id(),
+        sense.translationRu(),
+        sense.synonymsRu(),
+        sense.meaningsEn(),
+        sense.examples().stream().map(e -> new ExampleSentenceDto(e.en(), e.ru())).toList(),
+        cardId != null,
+        cardId == null ? null : cardId.toString());
   }
 }

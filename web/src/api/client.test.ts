@@ -44,6 +44,18 @@ describe('API client (interim Step 0)', () => {
     });
   });
 
+  it('lookup gives a saved sense the id of its card, and no card id to the others', async () => {
+    const [card] = await listCards();
+    const senses = (await lookup('run')).lexemes.flatMap((lexeme) => lexeme.senses);
+
+    const saved = senses.filter((sense) => sense.saved);
+    expect(saved.map((sense) => sense.card_id)).toEqual([card.id]);
+    expect(saved[0].id).toBe(card.sense_id);
+    const unsaved = senses.filter((sense) => !sense.saved);
+    expect(unsaved.length).toBeGreaterThan(0);
+    expect(unsaved.every((sense) => sense.card_id === undefined)).toBe(true);
+  });
+
   it('listCards returns saved cards', async () => {
     const cards = await listCards();
     expect(Array.isArray(cards)).toBe(true);
@@ -138,9 +150,10 @@ describe('API client (interim Step 0)', () => {
     const user2Cards = await listCards();
     expect(user2Cards).toEqual([]);
 
-    // Senses for User 2 show saved: false
+    // Senses for User 2 show saved: false, and not User 1's card id
     const lookupResUser2 = await lookup('run');
     expect(lookupResUser2.lexemes[0].senses[0].saved).toBe(false);
+    expect(lookupResUser2.lexemes[0].senses[0].card_id).toBeUndefined();
 
     // User 2 saves bank
     await saveCard('sense_bank_n_1');

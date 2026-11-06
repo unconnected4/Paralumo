@@ -71,7 +71,7 @@ export function SearchPage() {
   const activeQuery = searchParams.get('q')?.trim() ?? '';
 
   const { data, isLoading, isError, error } = useLookup(activeQuery);
-  const { saveCard, isSaving, savingSenseId } = useCards();
+  const { saveCard, isSaving, savingSenseId, deleteCard, isDeleting, deletingCardId } = useCards();
   const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -195,7 +195,9 @@ export function SearchPage() {
                       key={sense.id}
                       sense={sense}
                       onSave={handleSave}
+                      onUnsave={deleteCard}
                       isSaving={isSaving && savingSenseId === sense.id}
+                      isRemoving={isDeleting && deletingCardId === sense.card_id}
                     />
                   ))}
                 </div>

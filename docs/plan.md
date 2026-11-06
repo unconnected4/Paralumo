@@ -50,11 +50,11 @@ Scaffold `backend/` with Gradle, Spring Boot, DTO records, JPA entities and Flyw
 ## Step 2 — Translator-dictionary
 Backend:
 - `provider/yandex/`: calls the lookup endpoint and turns the response (`def[] → tr[] → syn/mean/ex`) into our `Lexeme`/`Sense` structures.
-- `GET /api/dictionary/lookup?q=`: returns the lexemes and senses, each marked `saved: bool` for the current user.
+- `GET /api/dictionary/lookup?q=`: returns the lexemes and senses, each marked `saved: bool` for the current user; a saved sense also carries `card_id`, the user's card, so a client can unsave it.
 - `POST /api/cards {sense_id}`, `DELETE /api/cards/{id}`, `GET /api/cards` (the user's vocabulary list).
 
 Web:
-- Login/register pages, a search box, results grouped by part of speech, and one sense card each (Russian translation, synonyms, English meanings, examples) with a "+" button that shows ✓ once saved. Plus a "My words" list page.
+- Login/register pages, a search box, results grouped by part of speech, and one sense card each (Russian translation, synonyms, English meanings, examples) with a "+" button that shows ✓ once saved; clicking ✓ unsaves. Plus a "My words" list page.
 - Audio pronunciation: Web Speech API (`speechSynthesis`) is primary audio, feature-detected (`'speechSynthesis' in window`) to hide when unsupported.
 - Show the Yandex credit line if the terms require it.
 
