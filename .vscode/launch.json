@@ -1,0 +1,27 @@
+{
+  // Described in docs/engineering.md ("Debugging"). Start `npm run dev` before "Web: Chrome".
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "java",
+      "name": "Backend: API",
+      "request": "launch",
+      "mainClass": "com.paralumo.ParalumoApplication",
+      "projectName": "paralumo-backend",
+      "cwd": "${workspaceFolder}/backend"
+    },
+    {
+      "type": "chrome",
+      "name": "Web: Chrome",
+      "request": "launch",
+      "url": "http://localhost:5173",
+      "webRoot": "${workspaceFolder}/web"
+    }
+  ],
+  "compounds": [
+    {
+      "name": "Full stack",
+      "configurations": ["Backend: API", "Web: Chrome"]
+    }
+  ]
+}

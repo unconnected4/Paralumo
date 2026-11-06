@@ -5,6 +5,7 @@ Spring Boot JSON API in Java. Intent and decisions: [intent.md](intent.md). Shar
 ## Prerequisites
 - JDK 25 (Temurin), with `JAVA_HOME` set. Gradle itself comes from the wrapper, so don't install it globally.
 - On Windows use `.\gradlew.bat` (PowerShell) or `./gradlew` (Git Bash). Both are the same wrapper.
+- Copy `.env.example` to `.env` once. Spring imports it as properties, and every variable without a default is required, so `bootRun`, `integrationTest`, `exportOpenApi` and therefore `check` all fail without it (or the same variables in the environment, as in CI).
 
 ## Commands (run from `backend/`)
 - Run API: `./gradlew bootRun` → http://localhost:8000 (Swagger UI at `/swagger-ui.html`). Reads `backend/.env`.

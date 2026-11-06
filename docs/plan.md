@@ -55,7 +55,7 @@ Backend:
 
 Web:
 - Login/register pages, a search box, results grouped by part of speech, and one sense card each (Russian translation, synonyms, English meanings, examples) with a "+" button that shows ✓ once saved. Plus a "My words" list page.
-- Audio pronunciation: Web Speech API (`speechSynthesis`) is primary audio, feature-detected (`'speechSynthesis' in window` and voice check) to hide when unsupported.
+- Audio pronunciation: Web Speech API (`speechSynthesis`) is primary audio, feature-detected (`'speechSynthesis' in window`) to hide when unsupported.
 - Show the Yandex credit line if the terms require it.
 
 ## Step 3 — Match game (outline, planned in detail later)

@@ -183,7 +183,7 @@ export const handlers = [
   http.post('/api/auth/login', async ({ request }) => {
     const body = (await request.json()) as { email?: string; password?: string };
     if (!body?.email || !body?.password) {
-      return HttpResponse.json({ detail: 'Email and password required' }, { status: 400 });
+      return HttpResponse.json({ detail: 'Email and password required' }, { status: 422 });
     }
     // Behave like a real backend: unknown email or wrong password is a 401, never an implicit sign-up.
     const account = registeredUsers.get(body.email);
@@ -198,7 +198,7 @@ export const handlers = [
   http.post('/api/auth/register', async ({ request }) => {
     const body = (await request.json()) as { email?: string; password?: string };
     if (!body?.email || !body?.password) {
-      return HttpResponse.json({ detail: 'Email and password required' }, { status: 400 });
+      return HttpResponse.json({ detail: 'Email and password required' }, { status: 422 });
     }
     if (registeredUsers.has(body.email)) {
       return HttpResponse.json({ detail: 'A user with this email already exists' }, { status: 409 });

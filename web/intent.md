@@ -7,7 +7,7 @@ Scope: the browser client, and the fast prototyping surface for every feature be
 - Styling: **Tailwind CSS 4** (via `@tailwindcss/vite`, no config file) for rapid responsive styling and easy theming
 - Routing: React Router (`react-router` package). Server state: TanStack Query (no global store unless a real need appears)
 - Typed API client generated from `docs/api/openapi.json` (`openapi-typescript` + `openapi-fetch`)
-- Audio pronunciation: Web Speech API (`window.speechSynthesis`) is the primary audio source, with feature detection (`'speechSynthesis' in window` and voice check) to gracefully hide the button when unsupported
+- Audio pronunciation: Web Speech API (`window.speechSynthesis`) is the primary audio source, with feature detection (`'speechSynthesis' in window`) to hide the button when unsupported. Voices load asynchronously in Chrome, so there is no synchronous voice check: it would hide the button wrongly
 - Tests: Vitest + Testing Library for components. Full-flow tests live in `../e2e`
 
 ## Pages (steps 0–2)
@@ -29,3 +29,5 @@ Step 3 adds the Match game page.
 
 ## Open questions
 - Hosting: static hosting with `/api` routed to the backend, or served by the backend's host. TBD with backend hosting.
+- For Alex: should the ✓ "Saved" badge on the search page toggle back to unsave? Today it is static; unsaving is only possible from "My words". The lookup response carries `saved: bool` but not the card id, so unsaving from search needs either a `card_id` on saved senses or a delete-by-sense endpoint (an API change: backend, spec and generated client together). Product taste, so only Alex can say. Blocks nothing; raised in the Step 1 review (2026-11-06).
+- Dependency advisories: `npm audit` (2026-11-06) reports advisories only in dev tooling (vite, vitest, undici, zod, source-map-js, and eslint 10 / typescript-eslint through minimatch). `npm audit fix` covers the first group; the eslint ones offer only a downgrade to eslint 9, which the current-majors rule rules out, so they wait for upstream. A separate dependency-update change, not part of a feature step.
