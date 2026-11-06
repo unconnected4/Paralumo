@@ -108,7 +108,9 @@ export const handlers = [
     const q = url.searchParams.get('q')?.toLowerCase().trim() || '';
 
     if (!q) {
-      return problem(422, 'q must not be blank');
+      // The backend deliberately makes an empty search a successful empty result. The generated
+      // client short-circuits this case, but direct callers of the mock must see the same contract.
+      return HttpResponse.json({ query: '', lexemes: [] });
     }
 
     const fixture = MOCK_DICTIONARY_FIXTURES[q];

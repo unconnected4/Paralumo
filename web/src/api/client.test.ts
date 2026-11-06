@@ -18,6 +18,12 @@ describe('API client (interim Step 0)', () => {
     expect(res.lexemes).toEqual([]);
   });
 
+  it('mock lookup matches the backend empty-query response for direct callers', async () => {
+    const response = await fetch(`${globalThis.location.origin}/api/dictionary/lookup?q=%20%20`);
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({ query: '', lexemes: [] });
+  });
+
   it('listCards returns saved cards', async () => {
     const cards = await listCards();
     expect(Array.isArray(cards)).toBe(true);
