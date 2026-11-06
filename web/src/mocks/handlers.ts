@@ -70,6 +70,37 @@ function findSenseAcrossFixtures(senseId: string): { sense: Sense; lexeme: Lexem
   return null;
 }
 
+function problem(status: number, detail: string): Response {
+  return HttpResponse.json(
+    { status, detail },
+    { status, headers: { 'Content-Type': 'application/problem+json' } }
+  );
+}
+
+async function readJsonObject(request: Request): Promise<Record<string, unknown> | null> {
+  try {
+    const parsed: unknown = await request.json();
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      return parsed as Record<string, unknown>;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+function normalizeEmail(email: string): string {
+  return email.trim().toLowerCase();
+}
+
+function isValidEmail(email: string): boolean {
+  return /^[^\s@]+@[^\s@]+$/.test(email);
+}
+
+function utf8ByteLength(value: string): number {
+  return new TextEncoder().encode(value).byteLength;
+}
+
 export const handlers = [
   // 1. Dictionary Lookup
   http.get('/api/dictionary/lookup', ({ request }) => {
@@ -77,15 +108,12 @@ export const handlers = [
     const q = url.searchParams.get('q')?.toLowerCase().trim() || '';
 
     if (!q) {
-      return HttpResponse.json({ query: '', lexemes: [] });
+      return problem(422, 'q must not be blank');
     }
 
     const fixture = MOCK_DICTIONARY_FIXTURES[q];
     if (!fixture) {
-      return HttpResponse.json(
-        { detail: `Word "${q}" not found in dictionary. Try "run", "bank", or "light".` },
-        { status: 404 }
-      );
+      return problem(404, `Word '${q}' not found`);
     }
 
     // Dynamic overlay for `saved` state (P12). Saved is per-user, so nothing is saved when signed out.
@@ -109,7 +137,7 @@ export const handlers = [
   // 2. List Cards
   http.get('/api/cards', () => {
     if (!currentUser) {
-      return HttpResponse.json({ detail: 'Authentication required' }, { status: 401 });
+      return problem(401, 'Authentication required');
     }
     return HttpResponse.json(getCardsForUser(currentUser.id));
   }),
@@ -117,21 +145,25 @@ export const handlers = [
   // 3. Save Card
   http.post('/api/cards', async ({ request }) => {
     if (!currentUser) {
-      return HttpResponse.json({ detail: 'Authentication required' }, { status: 401 });
+      return problem(401, 'Authentication required');
     }
 
-    const body = (await request.json()) as { sense_id?: string; notes?: string };
-    if (!body?.sense_id) {
-      return HttpResponse.json({ detail: 'sense_id is required' }, { status: 422 });
+    const body = await readJsonObject(request);
+    if (!body) {
+      return problem(422, 'Request body is missing or malformed JSON');
+    }
+    const senseId = typeof body.sense_id === 'string' ? body.sense_id : '';
+    if (!senseId.trim()) {
+      return problem(422, 'sense_id is required');
     }
 
-    const match = findSenseAcrossFixtures(body.sense_id);
+    const match = findSenseAcrossFixtures(senseId);
     if (!match) {
-      return HttpResponse.json({ detail: 'Sense not found' }, { status: 404 });
+      return problem(404, `Sense '${senseId}' not found`);
     }
 
     const userCards = getCardsForUser(currentUser.id);
-    const existing = userCards.find((c) => c.sense_id === body.sense_id);
+    const existing = userCards.find((c) => c.sense_id === senseId);
     if (existing) {
       return HttpResponse.json(existing);
     }
@@ -147,7 +179,6 @@ export const handlers = [
       meanings_en: match.sense.meanings_en,
       examples: match.sense.examples,
       created_at: new Date().toISOString(),
-      notes: body.notes,
     };
 
     userCards.unshift(newCard);
@@ -157,7 +188,7 @@ export const handlers = [
   // 4. Delete Card
   http.delete('/api/cards/:id', ({ params }) => {
     if (!currentUser) {
-      return HttpResponse.json({ detail: 'Authentication required' }, { status: 401 });
+      return problem(401, 'Authentication required');
     }
 
     const userCards = getCardsForUser(currentUser.id);
@@ -168,27 +199,42 @@ export const handlers = [
       return new HttpResponse(null, { status: 204 });
     }
 
-    return HttpResponse.json({ detail: 'Card not found' }, { status: 404 });
+    return problem(404, 'Card not found');
   }),
 
   // 5. Auth: Me
   http.get('/api/auth/me', () => {
     if (!currentUser) {
-      return HttpResponse.json({ detail: 'Not authenticated' }, { status: 401 });
+      return problem(401, 'Not authenticated');
     }
     return HttpResponse.json(currentUser);
   }),
 
   // 6. Auth: Login
   http.post('/api/auth/login', async ({ request }) => {
-    const body = (await request.json()) as { email?: string; password?: string };
-    if (!body?.email || !body?.password) {
-      return HttpResponse.json({ detail: 'Email and password required' }, { status: 422 });
+    const body = await readJsonObject(request);
+    if (!body) {
+      return problem(422, 'Request body is missing or malformed JSON');
     }
-    // Behave like a real backend: unknown email or wrong password is a 401, never an implicit sign-up.
-    const account = registeredUsers.get(body.email);
-    if (!account || account.password !== body.password) {
-      return HttpResponse.json({ detail: 'Invalid email or password' }, { status: 401 });
+    const rawEmail = typeof body.email === 'string' ? body.email : '';
+    const password = typeof body.password === 'string' ? body.password : '';
+    const errors: string[] = [];
+    if (!rawEmail.trim()) {
+      errors.push('email is required');
+    }
+    if (!password.trim()) {
+      errors.push('password is required');
+    }
+    if (errors.length > 0) {
+      return problem(422, errors.join('; '));
+    }
+    // Behave like the real backend: >72 UTF-8 byte passwords, unknown emails and wrong passwords are 401.
+    if (utf8ByteLength(password) > 72) {
+      return problem(401, 'Invalid email or password');
+    }
+    const account = registeredUsers.get(normalizeEmail(rawEmail));
+    if (!account || account.password !== password) {
+      return problem(401, 'Invalid email or password');
     }
     currentUser = account.user;
     return HttpResponse.json(currentUser);
@@ -196,15 +242,38 @@ export const handlers = [
 
   // 7. Auth: Register
   http.post('/api/auth/register', async ({ request }) => {
-    const body = (await request.json()) as { email?: string; password?: string };
-    if (!body?.email || !body?.password) {
-      return HttpResponse.json({ detail: 'Email and password required' }, { status: 422 });
+    const body = await readJsonObject(request);
+    if (!body) {
+      return problem(422, 'Request body is missing or malformed JSON');
     }
-    if (registeredUsers.has(body.email)) {
-      return HttpResponse.json({ detail: 'A user with this email already exists' }, { status: 409 });
+    const rawEmail = typeof body.email === 'string' ? body.email : '';
+    const password = typeof body.password === 'string' ? body.password : '';
+    const trimmedEmail = rawEmail.trim();
+    const errors: string[] = [];
+    if (!trimmedEmail) {
+      errors.push('email is required');
+    } else if (!isValidEmail(trimmedEmail)) {
+      errors.push('email must be a valid email address');
     }
-    const user: User = { id: `usr_mock_${nextUserNumber++}`, email: body.email };
-    registeredUsers.set(body.email, { user, password: body.password });
+    if (!password.trim()) {
+      errors.push('password is required');
+    } else {
+      if (password.length < 8) {
+        errors.push('password must be at least 8 characters');
+      }
+      if (utf8ByteLength(password) > 72) {
+        errors.push('password must be at most 72 bytes');
+      }
+    }
+    if (errors.length > 0) {
+      return problem(422, errors.join('; '));
+    }
+    const email = normalizeEmail(trimmedEmail);
+    if (registeredUsers.has(email)) {
+      return problem(409, 'A user with this email already exists');
+    }
+    const user: User = { id: `usr_mock_${nextUserNumber++}`, email };
+    registeredUsers.set(email, { user, password });
     currentUser = user;
     return HttpResponse.json(currentUser, { status: 201 });
   }),

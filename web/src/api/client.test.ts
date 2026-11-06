@@ -59,19 +59,46 @@ describe('API client (interim Step 0)', () => {
     await expect(login({ email: 'learner@example.com', password: 'wrong' })).rejects.toMatchObject({
       status: 401,
     });
+    await expect(
+      login({ email: 'learner@example.com', password: 'пароль'.repeat(6) + 'x' })
+    ).rejects.toMatchObject({
+      status: 401,
+    });
     expect(await getMe()).toBeNull();
   });
 
-  it('rejects registering an email that already exists', async () => {
-    await expect(register({ email: 'learner@example.com', password: 'other' })).rejects.toMatchObject({
+  it('rejects registering an email that already exists, ignoring case and outer spaces', async () => {
+    await expect(
+      register({ email: '  LEARNER@example.com  ', password: 'otherpass123' })
+    ).rejects.toMatchObject({
       status: 409,
+      message: 'A user with this email already exists',
     });
   });
 
-  it('gives each registered user a distinct id', async () => {
-    const a = await register({ email: 'a@example.com', password: 'secret123' });
+  it('validates registration email format and password bounds with 422 problem details', async () => {
+    await expect(register({ email: 'not-an-email', password: 'short' })).rejects.toMatchObject({
+      status: 422,
+      message: 'email must be a valid email address; password must be at least 8 characters',
+    });
+    await expect(
+      register({ email: 'long@example.com', password: 'пароль'.repeat(6) + 'x' })
+    ).rejects.toMatchObject({
+      status: 422,
+      message: 'password must be at most 72 bytes',
+    });
+  });
+
+  it('normalizes email on register and login and gives each user a distinct id', async () => {
+    const a = await register({ email: '  Alice@Example.com ', password: 'secret123' });
     const b = await register({ email: 'b@example.com', password: 'secret123' });
+    expect(a.email).toBe('alice@example.com');
     expect(a.id).not.toBe(b.id);
+
+    await logout();
+    const signedIn = await login({ email: ' ALICE@example.com ', password: 'secret123' });
+    expect(signedIn.id).toBe(a.id);
+    expect(signedIn.email).toBe('alice@example.com');
   });
 
   it('isolates saved cards and saved flag between different users', async () => {
