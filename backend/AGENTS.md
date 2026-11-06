@@ -13,7 +13,7 @@ Spring Boot JSON API in Java. Intent and decisions: [intent.md](intent.md). Shar
 - Format: `./gradlew spotlessApply`. Check only: `./gradlew spotlessCheck`
 - Everything a commit needs (compile with Error Prone + NullAway, format check, unit and integration tests): `./gradlew check`
 - Migrations run automatically (Flyway) when the app or an integration test starts. New migration: add `src/main/resources/db/migration/V<n>__<what_changed>.sql`.
-- Export API spec: `./gradlew exportOpenApi` → writes `../docs/api/openapi.json`
+- Export API spec: `./gradlew exportOpenApi` → writes `../docs/api/openapi.json`. It boots the app, so it needs Postgres like the integration tests. `check` fails if the committed spec is out of date.
 
 ## Layout
 ```

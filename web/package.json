@@ -12,11 +12,12 @@
     "test:watch": "vitest",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "gen:api": "node -e \"const fs = require('fs'); if (fs.existsSync('../docs/api/openapi.json')) { require('child_process').execSync('npx openapi-typescript ../docs/api/openapi.json -o src/api/schema.d.ts', {stdio: 'inherit'}); } else { console.log('Step 0: docs/api/openapi.json not yet created. Using interim hand-written client in src/api/'); }\""
+    "gen:api": "openapi-typescript ../docs/api/openapi.json -o src/api/schema.d.ts"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.104.0",
     "lucide-react": "^1.48.0",
+    "openapi-fetch": "^0.17.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "react-router": "^8.4.0"
@@ -38,6 +39,7 @@
     "globals": "^17.12.0",
     "jsdom": "^30.1.1",
     "msw": "^2.15.0",
+    "openapi-typescript": "^7.13.0",
     "tailwindcss": "^4.3.3",
     "typescript": "~6.0.3",
     "typescript-eslint": "^8.70.1",
@@ -54,5 +56,13 @@
     "workerDirectory": [
       "public"
     ]
+  },
+  "overrides": {
+    "openapi-typescript": {
+      "typescript": "$typescript"
+    },
+    "openapi-fetch": {
+      "typescript": "$typescript"
+    }
   }
 }

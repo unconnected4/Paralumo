@@ -1,44 +1,12 @@
-export interface ExampleSentence {
-  en: string;
-  ru: string;
-}
+// API models, generated from docs/api/openapi.json into ./schema.d.ts by `npm run gen:api`.
+// Only names are given here; edit the backend DTOs and regenerate to change a shape.
+import type { components } from './schema';
 
-export interface Sense {
-  id: string; // opaque deterministic sense_id string owned by backend / mock
-  translation_ru: string;
-  synonyms_ru?: string[];
-  meanings_en?: string[];
-  examples?: ExampleSentence[];
-  saved: boolean;
-}
+type Schemas = components['schemas'];
 
-export interface Lexeme {
-  lemma: string;
-  pos: string; // e.g. "noun", "verb", "adjective"
-  transcription?: string;
-  senses: Sense[];
-}
-
-export interface LookupResponse {
-  query: string;
-  lexemes: Lexeme[];
-}
-
-export interface Card {
-  id: string;
-  sense_id: string;
-  lemma: string;
-  pos: string;
-  transcription?: string;
-  translation_ru: string;
-  synonyms_ru?: string[];
-  meanings_en?: string[];
-  examples?: ExampleSentence[];
-  created_at: string;
-  notes?: string;
-}
-
-export interface User {
-  id: string;
-  email: string;
-}
+export type ExampleSentence = Schemas['ExampleSentence'];
+export type Sense = Schemas['Sense'];
+export type Lexeme = Schemas['Lexeme'];
+export type LookupResponse = Schemas['LookupResponse'];
+export type Card = Schemas['Card'];
+export type User = Schemas['User'];

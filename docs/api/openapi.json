@@ -1,0 +1,588 @@
+{
+  "openapi" : "3.1.0",
+  "info" : {
+    "title" : "Paralumo API",
+    "version" : "1"
+  },
+  "servers" : [ {
+    "url" : "/"
+  } ],
+  "paths" : {
+    "/api/auth/login" : {
+      "post" : {
+        "operationId" : "login",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/LoginRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/User"
+                }
+              }
+            },
+            "description" : "Signed in"
+          },
+          "401" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Unknown email or wrong password"
+          },
+          "422" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Missing email or password"
+          }
+        },
+        "summary" : "Sign in",
+        "tags" : [ "auth-controller" ]
+      }
+    },
+    "/api/auth/logout" : {
+      "post" : {
+        "operationId" : "logout",
+        "responses" : {
+          "204" : {
+            "description" : "Signed out"
+          }
+        },
+        "summary" : "Sign out (clears the session cookie)",
+        "tags" : [ "auth-controller" ]
+      }
+    },
+    "/api/auth/me" : {
+      "get" : {
+        "operationId" : "getMe",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/User"
+                }
+              }
+            },
+            "description" : "Signed in"
+          },
+          "401" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Not signed in"
+          }
+        },
+        "summary" : "The signed-in user",
+        "tags" : [ "auth-controller" ]
+      }
+    },
+    "/api/auth/register" : {
+      "post" : {
+        "operationId" : "register",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/RegisterRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "201" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/User"
+                }
+              }
+            },
+            "description" : "Registered and signed in"
+          },
+          "409" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Email already registered"
+          },
+          "422" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Missing or invalid email or password"
+          }
+        },
+        "summary" : "Create an account and sign in",
+        "tags" : [ "auth-controller" ]
+      }
+    },
+    "/api/cards" : {
+      "get" : {
+        "operationId" : "listCards",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/Card"
+                  }
+                }
+              }
+            },
+            "description" : "The user's cards"
+          },
+          "401" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Not signed in"
+          }
+        },
+        "summary" : "List saved cards, newest first",
+        "tags" : [ "card-controller" ]
+      },
+      "post" : {
+        "description" : "201 with the new card, or 200 with the existing card if the sense is already saved. Saving a deleted card's sense restores it.",
+        "operationId" : "saveCard",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/SaveCardRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Card"
+                }
+              }
+            },
+            "description" : "Already saved"
+          },
+          "201" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Card"
+                }
+              }
+            },
+            "description" : "Saved"
+          },
+          "401" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Not signed in"
+          },
+          "404" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Unknown sense"
+          },
+          "422" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Missing sense_id"
+          }
+        },
+        "summary" : "Save a sense as a card",
+        "tags" : [ "card-controller" ]
+      }
+    },
+    "/api/cards/{cardId}" : {
+      "delete" : {
+        "operationId" : "deleteCard",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "cardId",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "Deleted"
+          },
+          "401" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Not signed in"
+          },
+          "404" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Unknown card"
+          }
+        },
+        "summary" : "Delete a card",
+        "tags" : [ "card-controller" ]
+      }
+    },
+    "/api/dictionary/lookup" : {
+      "get" : {
+        "description" : "An empty query returns no lexemes. `saved` reflects the signed-in user.",
+        "operationId" : "lookup",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "q",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "default" : ""
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/LookupResponse"
+                }
+              }
+            },
+            "description" : "Entries grouped by part of speech"
+          },
+          "404" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Unknown word"
+          }
+        },
+        "summary" : "Look up an English word",
+        "tags" : [ "dictionary-controller" ]
+      }
+    },
+    "/api/health" : {
+      "get" : {
+        "operationId" : "health",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "additionalProperties" : {
+                    "type" : "string"
+                  }
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "summary" : "The process is up",
+        "tags" : [ "health-controller" ]
+      }
+    },
+    "/api/health/ready" : {
+      "get" : {
+        "operationId" : "ready",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "additionalProperties" : {
+                    "type" : "string"
+                  }
+                }
+              }
+            },
+            "description" : "Ready"
+          },
+          "503" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Database unreachable"
+          }
+        },
+        "summary" : "The database is reachable",
+        "tags" : [ "health-controller" ]
+      }
+    }
+  },
+  "components" : {
+    "schemas" : {
+      "Card" : {
+        "properties" : {
+          "created_at" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "examples" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/ExampleSentence"
+            }
+          },
+          "id" : {
+            "type" : "string"
+          },
+          "lemma" : {
+            "type" : "string"
+          },
+          "meanings_en" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          },
+          "notes" : {
+            "type" : "string"
+          },
+          "pos" : {
+            "type" : "string"
+          },
+          "sense_id" : {
+            "type" : "string"
+          },
+          "synonyms_ru" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          },
+          "transcription" : {
+            "type" : "string"
+          },
+          "translation_ru" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "created_at", "id", "lemma", "pos", "sense_id", "translation_ru" ]
+      },
+      "ExampleSentence" : {
+        "properties" : {
+          "en" : {
+            "type" : "string"
+          },
+          "ru" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "en", "ru" ]
+      },
+      "Lexeme" : {
+        "properties" : {
+          "lemma" : {
+            "type" : "string"
+          },
+          "pos" : {
+            "type" : "string",
+            "example" : "verb"
+          },
+          "senses" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/Sense"
+            }
+          },
+          "transcription" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "lemma", "pos", "senses" ]
+      },
+      "LoginRequest" : {
+        "properties" : {
+          "email" : {
+            "type" : "string",
+            "minLength" : 1
+          },
+          "password" : {
+            "type" : "string",
+            "minLength" : 1
+          }
+        },
+        "required" : [ "email", "password" ]
+      },
+      "LookupResponse" : {
+        "properties" : {
+          "lexemes" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/Lexeme"
+            }
+          },
+          "query" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "lexemes", "query" ]
+      },
+      "Problem" : {
+        "type" : "object",
+        "description" : "RFC 9457 problem details",
+        "properties" : {
+          "detail" : {
+            "type" : "string",
+            "description" : "Human-readable message"
+          },
+          "instance" : {
+            "type" : "string"
+          },
+          "status" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "title" : {
+            "type" : "string"
+          },
+          "type" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "detail" ]
+      },
+      "RegisterRequest" : {
+        "properties" : {
+          "email" : {
+            "type" : "string",
+            "format" : "email",
+            "minLength" : 1
+          },
+          "password" : {
+            "type" : "string",
+            "maxLength" : 2147483647,
+            "minLength" : 8
+          }
+        },
+        "required" : [ "email", "password" ]
+      },
+      "SaveCardRequest" : {
+        "properties" : {
+          "sense_id" : {
+            "type" : "string",
+            "minLength" : 1
+          }
+        },
+        "required" : [ "sense_id" ]
+      },
+      "Sense" : {
+        "properties" : {
+          "examples" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/ExampleSentence"
+            }
+          },
+          "id" : {
+            "type" : "string",
+            "description" : "Opaque sense id; pass it to POST /api/cards"
+          },
+          "meanings_en" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          },
+          "saved" : {
+            "type" : "boolean",
+            "description" : "Whether the current user has saved this sense (false when signed out)"
+          },
+          "synonyms_ru" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          },
+          "translation_ru" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "id", "saved", "translation_ru" ]
+      },
+      "User" : {
+        "properties" : {
+          "email" : {
+            "type" : "string"
+          },
+          "id" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "email", "id" ]
+      }
+    }
+  }
+}

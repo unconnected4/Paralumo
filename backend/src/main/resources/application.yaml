@@ -1,0 +1,48 @@
+# Environment variables are mapped to properties here and bound to the @ConfigurationProperties
+# records in com.paralumo.config. Placeholders without a default are required: a missing variable
+# stops startup. Every variable is listed in backend/.env.example.
+spring:
+  application:
+    name: paralumo
+  config:
+    import: optional:file:.env[.properties]
+  jackson:
+    property-naming-strategy: SNAKE_CASE
+    default-property-inclusion: non_null
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+
+server:
+  port: ${PORT:8000}
+
+logging:
+  level:
+    root: ${LOG_LEVEL:INFO}
+
+paralumo:
+  app:
+    env: ${APP_ENV}
+  database:
+    url: ${DATABASE_URL}
+    user: ${DATABASE_USER}
+    password: ${DATABASE_PASSWORD}
+  auth:
+    secret: ${AUTH_SECRET}
+  dictionary:
+    provider: ${DICTIONARY_PROVIDER}
+  cors:
+    origins: ${CORS_ORIGINS:}
+
+springdoc:
+  # Stable key order, so the exported docs/api/openapi.json only changes when the API does.
+  writer-with-order-by-keys: true
+  # Enabled on purpose, in every environment for now: the spec and Swagger UI document the API.
+  api-docs:
+    enabled: true
+    path: /v3/api-docs
+  swagger-ui:
+    enabled: true
+    path: /swagger-ui.html
+  paths-to-match: /api/**

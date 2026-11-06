@@ -1,0 +1,93 @@
+[
+  {
+    "lemma": "run",
+    "pos": "verb",
+    "transcription": "rʌn",
+    "senses": [
+      {
+        "translation_ru": "бежать",
+        "synonyms_ru": [
+          "мчаться",
+          "нестись"
+        ],
+        "meanings_en": [
+          "move at a speed faster than a walk"
+        ],
+        "examples": [
+          {
+            "en": "She runs five miles every morning along the coast.",
+            "ru": "Она бегает пять миль каждое утро вдоль побережья."
+          }
+        ]
+      },
+      {
+        "translation_ru": "управлять",
+        "synonyms_ru": [
+          "руководить",
+          "вести"
+        ],
+        "meanings_en": [
+          "be in charge of; manage or organize"
+        ],
+        "examples": [
+          {
+            "en": "He runs a small independent bakery in the town center.",
+            "ru": "Он управляет небольшой независимой пекарней в центре города."
+          }
+        ]
+      },
+      {
+        "translation_ru": "работать",
+        "synonyms_ru": [
+          "функционировать"
+        ],
+        "meanings_en": [
+          "function or operate continuously"
+        ],
+        "examples": [
+          {
+            "en": "The engine is running quietly and smoothly.",
+            "ru": "Двигатель работает тихо и плавно."
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "lemma": "run",
+    "pos": "noun",
+    "transcription": "rʌn",
+    "senses": [
+      {
+        "translation_ru": "пробежка",
+        "synonyms_ru": [
+          "бег"
+        ],
+        "meanings_en": [
+          "an act or spell of running for exercise"
+        ],
+        "examples": [
+          {
+            "en": "I went for a 5-kilometer run in the park before breakfast.",
+            "ru": "Я вышел на 5-километровую пробежку в парке перед завтраком."
+          }
+        ]
+      },
+      {
+        "translation_ru": "полоса",
+        "synonyms_ru": [
+          "серия"
+        ],
+        "meanings_en": [
+          "a continuous sequence or streak"
+        ],
+        "examples": [
+          {
+            "en": "The football team enjoyed a magnificent run of six consecutive victories.",
+            "ru": "Футбольная команда наслаждалась великолепной серией из шести побед подряд."
+          }
+        ]
+      }
+    ]
+  }
+]

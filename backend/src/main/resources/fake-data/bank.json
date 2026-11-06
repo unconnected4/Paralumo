@@ -1,0 +1,62 @@
+[
+  {
+    "lemma": "bank",
+    "pos": "noun",
+    "transcription": "bæŋk",
+    "senses": [
+      {
+        "translation_ru": "банк",
+        "synonyms_ru": [
+          "финансовое учреждение"
+        ],
+        "meanings_en": [
+          "a financial institution licensed to receive deposits and make loans"
+        ],
+        "examples": [
+          {
+            "en": "I went to the bank to open a savings account.",
+            "ru": "Я пошёл в банк, чтобы открыть сберегательный счёт."
+          }
+        ]
+      },
+      {
+        "translation_ru": "берег",
+        "synonyms_ru": [
+          "набережная",
+          "склон"
+        ],
+        "meanings_en": [
+          "the land along the edge of a river or lake"
+        ],
+        "examples": [
+          {
+            "en": "They set up camp on the grassy bank of the river.",
+            "ru": "Они разбили лагерь на травянистом берегу реки."
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "lemma": "bank",
+    "pos": "verb",
+    "transcription": "bæŋk",
+    "senses": [
+      {
+        "translation_ru": "рассчитывать",
+        "synonyms_ru": [
+          "полагаться"
+        ],
+        "meanings_en": [
+          "rely on or count on with confidence"
+        ],
+        "examples": [
+          {
+            "en": "You can bank on his support when you need it most.",
+            "ru": "Ты можешь рассчитывать на его поддержку, когда она нужнее всего."
+          }
+        ]
+      }
+    ]
+  }
+]

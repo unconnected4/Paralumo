@@ -1,6 +1,14 @@
+import createClient from 'openapi-fetch';
+import type { paths } from './schema';
 import type { Card, LookupResponse, User } from './types';
 
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
+// Requests are typed against the generated spec (./schema.d.ts, `npm run gen:api`).
+const api = createClient<paths>({
+  // Empty means same origin: the Vite proxy locally, the same routing in production.
+  baseUrl: import.meta.env.VITE_API_BASE_URL || globalThis.location.origin,
+  // Look up fetch on every request, so tools that patch globalThis.fetch (MSW) see the calls.
+  fetch: (request) => globalThis.fetch(request),
+});
 
 /** A non-2xx response. `message` is the backend's `detail` when it sent one. */
 export class ApiError extends Error {
@@ -13,26 +21,25 @@ export class ApiError extends Error {
   }
 }
 
-async function handleResponse<T>(res: Response): Promise<T> {
-  if (!res.ok) {
-    let errorMsg = `API request failed: ${res.status} ${res.statusText}`;
-    try {
-      const data = await res.json();
-      if (data && data.detail) {
-        errorMsg = typeof data.detail === 'string' ? data.detail : JSON.stringify(data.detail);
-      } else if (data && data.message) {
-        errorMsg = data.message;
-      }
-    } catch {
-      // Keep default errorMsg if JSON parsing fails
+function toApiError(response: Response, body: unknown): ApiError {
+  let errorMsg = `API request failed: ${response.status} ${response.statusText}`;
+  if (body && typeof body === 'object') {
+    const { detail, message } = body as { detail?: unknown; message?: unknown };
+    if (detail) {
+      errorMsg = typeof detail === 'string' ? detail : JSON.stringify(detail);
+    } else if (typeof message === 'string' && message) {
+      errorMsg = message;
     }
-    throw new ApiError(errorMsg, res.status);
   }
+  return new ApiError(errorMsg, response.status);
+}
 
-  if (res.status === 204) {
-    return undefined as unknown as T;
+async function unwrap<T>(request: Promise<{ data?: T; error?: unknown; response: Response }>): Promise<T> {
+  const { data, error, response } = await request;
+  if (!response.ok) {
+    throw toApiError(response, error);
   }
-  return res.json();
+  return data as T;
 }
 
 export async function lookup(q: string): Promise<LookupResponse> {
@@ -40,75 +47,40 @@ export async function lookup(q: string): Promise<LookupResponse> {
   if (!trimmed) {
     return { query: '', lexemes: [] };
   }
-  const res = await fetch(`${BASE_URL}/dictionary/lookup?q=${encodeURIComponent(trimmed)}`, {
-    headers: { Accept: 'application/json' },
-  });
-  return handleResponse<LookupResponse>(res);
+  return unwrap(api.GET('/api/dictionary/lookup', { params: { query: { q: trimmed } } }));
 }
 
 export async function listCards(): Promise<Card[]> {
-  const res = await fetch(`${BASE_URL}/cards`, {
-    headers: { Accept: 'application/json' },
-  });
-  return handleResponse<Card[]>(res);
+  return unwrap(api.GET('/api/cards'));
 }
 
 export async function saveCard(senseId: string): Promise<Card> {
-  const res = await fetch(`${BASE_URL}/cards`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Accept: 'application/json',
-    },
-    body: JSON.stringify({ sense_id: senseId }),
-  });
-  return handleResponse<Card>(res);
+  return unwrap(api.POST('/api/cards', { body: { sense_id: senseId } }));
 }
 
 export async function deleteCard(cardId: string): Promise<void> {
-  const res = await fetch(`${BASE_URL}/cards/${encodeURIComponent(cardId)}`, {
-    method: 'DELETE',
-  });
-  return handleResponse<void>(res);
+  await unwrap(api.DELETE('/api/cards/{cardId}', { params: { path: { cardId } } }));
 }
 
 export async function login(credentials: { email: string; password: string }): Promise<User> {
-  const res = await fetch(`${BASE_URL}/auth/login`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Accept: 'application/json',
-    },
-    body: JSON.stringify(credentials),
-  });
-  return handleResponse<User>(res);
+  return unwrap(api.POST('/api/auth/login', { body: credentials }));
 }
 
 export async function register(credentials: { email: string; password: string }): Promise<User> {
-  const res = await fetch(`${BASE_URL}/auth/register`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Accept: 'application/json',
-    },
-    body: JSON.stringify(credentials),
-  });
-  return handleResponse<User>(res);
+  return unwrap(api.POST('/api/auth/register', { body: credentials }));
 }
 
 export async function logout(): Promise<void> {
-  const res = await fetch(`${BASE_URL}/auth/logout`, {
-    method: 'POST',
-  });
-  return handleResponse<void>(res);
+  await unwrap(api.POST('/api/auth/logout'));
 }
 
 export async function getMe(): Promise<User | null> {
-  const res = await fetch(`${BASE_URL}/auth/me`, {
-    headers: { Accept: 'application/json' },
-  });
-  if (res.status === 401) {
+  const { data, error, response } = await api.GET('/api/auth/me');
+  if (response.status === 401) {
     return null;
   }
-  return handleResponse<User>(res);
+  if (!response.ok) {
+    throw toApiError(response, error);
+  }
+  return data ?? null;
 }
