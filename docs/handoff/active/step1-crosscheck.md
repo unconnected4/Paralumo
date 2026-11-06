@@ -4,8 +4,8 @@ title: Cross-check of the Step 1 backend by all three implementers, then review
 status: ready-for-review
 branch: main
 started: 2026-11-06T12:24:36Z
-last_updated: 2026-11-06T15:39:30Z
-last_commit: 4d9aaf1
+last_updated: 2026-11-06T15:46:00Z
+last_commit: 74a8f46
 agents: [ClaudeC-Fable, ClaudeC-Opus5.5, AgyC-Gemini4Argon, CodexC-GPT5.6Terra]
 related_decisions: [docs/plan.md, intent.md, backend/intent.md, backend/AGENTS.md, web/intent.md, docs/engineering.md, docs/api/openapi.json, docs/handoff/archive/handoff-20261106T105500Z.md]
 ---
@@ -92,6 +92,8 @@ Format: `- F<n> [defect|improvement|proposal] <file or area>: <what is wrong and
 - F20 [defect] `web/src/mocks/handlers.ts`: F16's problem bodies used three `detail` strings the backend never sends: `Word 'x' not found` (backend: `Word "x" not found`), `Sense '<id>' not found` (backend: `Sense not found`) and `Request body is missing or malformed JSON` (backend: `... or not valid JSON`). `SearchPage` shows `detail` to the user, so mock mode showed wording the real app doesn't. Aligned, with a test that fails on the old strings. Found by: ClaudeC-Opus5.5. Status: fixed 6ecc7e9.
 
 ## Current state
+Update (CodexC-GPT5.6Terra, round 3 of the second driver run, 20261106T152737Z): reviewed every in-scope commit since dc8945e, specifically F20's 6ecc7e9 mock-detail alignment. Its three changed strings exactly match `LookupService`, `CardService`, and `ApiExceptionHandler`; its regression test exercises all of them. Nothing remains to fix. Backend `./gradlew check` passes with no warnings, and web `npm run lint && npm run typecheck && npm test && npm run build` passes (25 tests); `npm run gen:api` leaves no diff. No code changed this round, so status remains `ready-for-review` (second of the three-implementer streak). The paragraphs below are superseded by this update.
+
 Update (AgyC-Gemini4Argon, round 2 of the second driver run, 20261106T152737Z): read every commit since 52f9dba (4821f73..4d9aaf1; 937847d belongs to `agent-orchestration`). Both F19 (4821f73) and F20 (6ecc7e9) are sound and match the backend and `docs/api/openapi.json`; no defects remain. Backend `./gradlew check --rerun-tasks --no-build-cache` passes with no warnings, web `npm run lint && npm run typecheck && npm test && npm run build` passes (25 tests, no warnings), and `npm run gen:api` leaves no diff. No code changed in this round, so status is `ready-for-review` (first of the three-implementer streak). The paragraphs below are superseded by this update.
 
 Update (ClaudeC-Opus5.5, round 1 of the second driver run, 20261106T152737Z): read every commit since 2b3fabf (2a74bd0..937847d; 937847d belongs to `agent-orchestration` and touches nothing in scope). The backend changes for F11–F15, F17, F18 and the web changes for F16, F19 are sound, except F20 (mock detail wording), fixed in 6ecc7e9. Backend `./gradlew check` passes with no warnings; web lint, typecheck, test (25 tests) and build pass, and `npm run gen:api` leaves no diff. The paragraphs below are superseded by this update.
@@ -101,6 +103,7 @@ Update (round 3): all three implementers have now completed their full reviews. 
 `ClaudeC-Opus5.5` (round 1, F1–F10) and `AgyC-Gemini4Argon` (round 2, F7–F9 confirmed, F11–F18 recorded and fixed in 2a74bd0..4ec1fb5) have completed their full reviews. `CodexC-GPT5.6Terra` has not reviewed yet, and `ClaudeC-Opus5.5` has not yet inspected the round 2 commits. At 4ec1fb5, backend `./gradlew check --rerun-tasks --no-build-cache` passes with zero warnings, web `npm run lint && npm run typecheck && npm test && npm run build` passes (23 tests), and `npm run gen:api` leaves no diff. No change touched `docs/api/openapi.json`.
 
 ## Done
+- CodexC-GPT5.6Terra, second driver run round 3 (rule 6): reviewed dc8945e..74a8f46, including the only in-scope code change, F20 (6ecc7e9). Confirmed every mock `detail` corrected there exactly matches the relevant backend source and the regression test covers the three cases. Found nothing to fix; backend and web checks passed cleanly, and API generation left no diff.
 - AgyC-Gemini4Argon, second driver run round 2 (rule 6): reviewed 4821f73..4d9aaf1. Verified F19 (4821f73: direct empty or whitespace `GET /api/dictionary/lookup` returns 200 `{query: '', lexemes: []}`, matching `DictionaryController` and `LookupService`) and F20 (6ecc7e9: every `problem(...)` `detail` string in `web/src/mocks/handlers.ts` now matches the exact wording emitted by `LookupService`, `CardService`, `AuthController`, `SecurityConfig`, `Dtos` and `ApiExceptionHandler`). Found nothing left to fix; re-ran all backend and web checks cleanly.
 - ClaudeC-Opus5.5, second driver run round 1 (rule 6): reviewed 2a74bd0..4821f73. Fixed F20 in 6ecc7e9. Checked and found sound: F11's early return skips the dummy hash, but for known and unknown emails alike, so it reveals no accounts; F12's trim runs in the record's canonical constructor, which Jackson uses; F14's startup exception fails binding as the fail-fast rule wants; F15 still never falls back to the cookie on a blank or forged bearer header; the F18 registration race test uses the same blocked-connection pattern as F3's.
 - CodexC-GPT5.6Terra independent full review of the whole scope at 4821f73. Confirmed F7–F9 proposals and fixed F19's empty-query contract drift in the permanent MSW handler, with a direct-handler test.
@@ -131,7 +134,7 @@ Update (round 3): all three implementers have now completed their full reviews. 
 - Next agent: tests and local runs use the fake dictionary provider only; never call the live Yandex API (`AGENTS.md`).
 
 ## Next step
-0. Supersedes item 1 below where they differ: `AgyC-Gemini4Argon` has now inspected commits through 4d9aaf1 and reported `ready-for-review`. `CodexC-GPT5.6Terra` should inspect commits since dc8945e (specifically 6ecc7e9) per rule 6 and set `ready-for-review` if nothing remains; `ClaudeC-Opus5.5` should inspect commits since 4d9aaf1 per rule 6 and set `ready-for-review` if nothing remains, completing the three-implementer streak so `ClaudeC-Fable` runs item 3.
+0. Supersedes item 1 below where they differ: `AgyC-Gemini4Argon` and `CodexC-GPT5.6Terra` have inspected commits through 74a8f46 and reported `ready-for-review`. `ClaudeC-Opus5.5` should inspect commits since 4d9aaf1 per rule 6 and set `ready-for-review` if nothing remains, completing the three-implementer streak so `ClaudeC-Fable` runs item 3.
 
 1. Supersedes the following stale first-round instruction: ClaudeC-Opus5.5 and AgyC-Gemini4Argon should inspect commits since their respective previous rounds (including 4821f73), following rule 6. Record or fix any defect in those changes; otherwise set `ready-for-review`. CodexC-GPT5.6Terra should inspect only commits since 4821f73 in a later round.
 
@@ -140,6 +143,7 @@ Update (round 3): all three implementers have now completed their full reviews. 
 3. Reviewer (`ClaudeC-Fable`), when the implementers have stopped: check the acceptance list. If a row in "Review coverage" is empty, set `in-progress` and say which agent still owes its review. Decide every `proposal` and every recorded disagreement, review the fix commits, re-run all checks. Copy accepted proposals that change a decision into the matching `intent.md` before closing.
 
 ## Session log
+- 2026-11-06T15:46:00Z CodexC-GPT5.6Terra: Second driver run (20261106T152737Z) round 3, rule 6 review of dc8945e..74a8f46. Verified F20's 6ecc7e9 mock-detail fix against the backend sources and test; all backend and web checks pass with no generated API diff. Nothing left to do; status remains ready-for-review.
 - 2026-11-06T15:35:00Z ClaudeC-Opus5.5: Second driver run (20261106T152737Z) round 1, rule 6 review of 2a74bd0..937847d. Recorded and fixed F20 (6ecc7e9); all backend and web checks pass. Status stays in-progress because code changed.
 - 2026-11-06T13:54:07Z CodexC-GPT5.6Terra: Round 3 independent full review at 4821f73. Confirmed F7–F9, recorded and fixed F19; backend `check` and all web checks including API generation pass. Status stays in-progress because code changed in this round.
 - 2026-11-06T12:24:36Z ClaudeC-Fable: Opened this handoff at Alex's request after confirming from history and run logs that Gemini and Codex never worked on Step 1. No code changed.
