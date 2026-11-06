@@ -10,6 +10,13 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 @ConfigurationProperties("paralumo.cors")
 public record CorsProperties(List<String> origins) {
   public CorsProperties {
-    origins = origins == null ? List.of() : origins.stream().filter(o -> !o.isBlank()).toList();
+    origins =
+        origins == null
+            ? List.of()
+            : origins.stream().map(String::trim).filter(o -> !o.isEmpty()).toList();
+    if (origins.contains("*")) {
+      throw new IllegalArgumentException(
+          "CORS_ORIGINS must list explicit origins, not '*' (credentials are enabled)");
+    }
   }
 }

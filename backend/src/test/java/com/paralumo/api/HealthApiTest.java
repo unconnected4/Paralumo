@@ -1,12 +1,14 @@
 package com.paralumo.api;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.paralumo.IntegrationTest;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpHeaders;
 import org.springframework.test.web.servlet.MockMvc;
 
 @IntegrationTest
@@ -29,5 +31,12 @@ class HealthApiTest {
     mvc.perform(get("/api/nope"))
         .andExpect(status().isNotFound())
         .andExpect(jsonPath("$.detail").isString());
+  }
+
+  @Test
+  void corsIsOffWhenOriginsAreEmpty() throws Exception {
+    mvc.perform(get("/api/health").header(HttpHeaders.ORIGIN, "https://evil.example.com"))
+        .andExpect(status().isOk())
+        .andExpect(header().doesNotExist(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN));
   }
 }
