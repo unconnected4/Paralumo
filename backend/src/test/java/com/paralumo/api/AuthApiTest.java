@@ -46,6 +46,21 @@ class AuthApiTest extends ApiSupport {
             get("/api/auth/me").header(HttpHeaders.AUTHORIZATION, "Bearer " + session.getValue()))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.email").value("learner@example.com"));
+    mvc.perform(
+            get("/api/auth/me").header(HttpHeaders.AUTHORIZATION, "bearer " + session.getValue()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.email").value("learner@example.com"));
+    mvc.perform(
+            get("/api/auth/me")
+                .header(HttpHeaders.AUTHORIZATION, "BEARER   " + session.getValue() + "  "))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.email").value("learner@example.com"));
+    // An explicit Bearer header takes precedence over a cookie and never falls back on failure.
+    mvc.perform(
+            get("/api/auth/me").cookie(session).header(HttpHeaders.AUTHORIZATION, "bearer forged"))
+        .andExpect(status().isUnauthorized());
+    mvc.perform(get("/api/auth/me").cookie(session).header(HttpHeaders.AUTHORIZATION, "Bearer   "))
+        .andExpect(status().isUnauthorized());
   }
 
   @Test
