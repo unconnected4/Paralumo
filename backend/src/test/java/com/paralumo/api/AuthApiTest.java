@@ -58,6 +58,44 @@ class AuthApiTest extends ApiSupport {
   }
 
   @Test
+  void meReturnsOnlyTheAuthenticatedUser() throws Exception {
+    MvcResult aliceRegistered =
+        mvc.perform(
+                post("/api/auth/register")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(credentials("alice@example.com", PASSWORD)))
+            .andExpect(status().isCreated())
+            .andReturn();
+    MvcResult bobRegistered =
+        mvc.perform(
+                post("/api/auth/register")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(credentials("bob@example.com", PASSWORD)))
+            .andExpect(status().isCreated())
+            .andReturn();
+    String aliceId = read(aliceRegistered, "$.id");
+    String bobId = read(bobRegistered, "$.id");
+    assertThat(aliceId).isNotEqualTo(bobId);
+    Cookie alice = sessionCookie(aliceRegistered);
+    Cookie bob = sessionCookie(bobRegistered);
+
+    mvc.perform(get("/api/auth/me").cookie(alice))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.id").value(aliceId))
+        .andExpect(jsonPath("$.email").value("alice@example.com"));
+    mvc.perform(get("/api/auth/me").cookie(bob))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.id").value(bobId))
+        .andExpect(jsonPath("$.email").value("bob@example.com"));
+    mvc.perform(get("/api/auth/me").header(HttpHeaders.AUTHORIZATION, "Bearer " + alice.getValue()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.id").value(aliceId));
+    mvc.perform(get("/api/auth/me").header(HttpHeaders.AUTHORIZATION, "Bearer " + bob.getValue()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.id").value(bobId));
+  }
+
+  @Test
   void duplicateEmailIs409IgnoringCase() throws Exception {
     register("learner@example.com");
 
