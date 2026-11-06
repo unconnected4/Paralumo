@@ -75,9 +75,18 @@ The templates are short because `AGENTS.md` already tells every agent how to sta
 ```
 powershell -ExecutionPolicy Bypass -File scripts/orchestrate/orchestrate.ps1 -Task step1-backend
 ```
-`-ExecutionPolicy Bypass` applies to that one process only; the script is unsigned and the default policy refuses it. Other switches: `-DryRun` renders the first prompt and prints the command without running an agent, `-StartWith <role>` starts with that implementer or with the reviewer, `-MaxRounds N` and `-Config <path>` override the config.
+`-ExecutionPolicy Bypass` applies to that one process only; the script is unsigned and the default policy refuses it. Other switches: `-DryRun` renders the first prompt and prints the command without running an agent, `-AdoptUncommitted` starts on a dirty tree and hands the leftovers to the first round (see "Recovering from an interrupted round"), `-StartWith <role>` starts with that implementer or with the reviewer, `-MaxRounds N` and `-Config <path>` override the config.
 
 Requirements: a clean working tree, an existing `docs/handoff/active/<task>.md` with Goal and Next step filled in (by a human or an earlier session), and the CLIs from `roles.json` on `PATH`. A missing CLI fails the round that needs it.
+
+## Recovering from an interrupted round
+A round that does not finish leaves the agent's work uncommitted: the driver was stopped (Ctrl+C, closed terminal, sleep, reboot) or the round hit its timeout and was killed. The next start then finds a dirty working tree and refuses to run, because it cannot tell an agent's leftovers from Alex's own edits. Its error message lists the changed paths and, when the task's last real run folder has a summary without a `## Result` section, names that run and the round it was interrupted in.
+
+Two ways forward:
+- **Adopt the work** (the usual choice): rerun with `-AdoptUncommitted`. The driver starts anyway and tells the first round, through `{notes}`, that the tree holds uncommitted changes from a round that did not finish: inspect them, decide whether they are sound, finish and verify the work, commit everything per protocol, and record in the handoff what was found and done. Start with the role that was interrupted (`-StartWith <role>` if it isn't first), so the agent picks up its own work and the commit carries the right name. All normal checks still apply at the end of that round.
+- **Set it aside**: `git stash -u` (or commit it yourself), then run normally.
+
+First seen on 2026-10-28: an Opus round on `step1-backend` was interrupted after about half an hour with the backend scaffold, passing tests and the regenerated web client in the tree, but no handoff update and no commit.
 
 ## Limits of the first version
 - Sequential only. Parallel roles would need one worktree per agent; not planned until there is a reason.

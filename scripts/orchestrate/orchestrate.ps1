@@ -31,6 +31,11 @@ Default: the first implementer.
 .PARAMETER MaxRounds
 Overrides limits.maxRounds from the config.
 
+.PARAMETER AdoptUncommitted
+Start even though the working tree has uncommitted changes, and tell the first round to
+inspect, finish, verify and commit them. For recovering from a round that was interrupted
+or killed on timeout. Without it a dirty tree stops the driver before round 1.
+
 .PARAMETER DryRun
 Render the first prompt and print the command without running anything.
 
@@ -43,6 +48,7 @@ param(
     [string]$Config = '',
     [string]$StartWith = '',
     [int]$MaxRounds = 0,
+    [switch]$AdoptUncommitted,
     [switch]$DryRun
 )
 
@@ -130,7 +136,30 @@ if (-not (Test-Path -LiteralPath $handoffPath)) {
 }
 
 $dirty = Invoke-Git @('status', '--porcelain')
-if ($dirty) { throw "Working tree is not clean. Commit or stash first:`n$($dirty -join "`n")" }
+$adoptNote = $null
+if ($dirty) {
+    # A round that was interrupted (Ctrl+C, closed terminal, sleep) or killed on timeout leaves
+    # its work uncommitted. Look for the evidence: the task's latest run folder without a Result.
+    $hint = ''
+    # Dry runs execute nothing, so they are skipped when looking for the last real run.
+    $lastRun = Get-ChildItem -LiteralPath (Join-Path $repoRoot 'AgentsOutput/orchestrator') -Directory -Filter "*-$Task" -ErrorAction SilentlyContinue |
+        Where-Object {
+            $s = Join-Path $_.FullName 'summary.md'
+            (Test-Path -LiteralPath $s) -and -not (Select-String -LiteralPath $s -Pattern '^Dry run:' -Quiet)
+        } | Sort-Object Name | Select-Object -Last 1
+    if ($lastRun) {
+        $lastSummary = Join-Path $lastRun.FullName 'summary.md'
+        if ((Test-Path -LiteralPath $lastSummary) -and -not (Select-String -LiteralPath $lastSummary -Pattern '^## Result' -Quiet)) {
+            $lastRound = @(Select-String -LiteralPath $lastSummary -Pattern '^## Round ') | Select-Object -Last 1
+            $where = if ($lastRound) { " during '$($lastRound.Line.Trim())'" } else { '' }
+            $hint = "The previous run of this task ($($lastRun.Name)) never finished: the driver was interrupted$where. These changes are probably that agent's unfinished work."
+        }
+    }
+    if (-not $AdoptUncommitted) {
+        throw "Working tree is not clean:`n$($dirty -join "`n")`n$hint`nEither commit or stash the changes yourself (git stash -u), or rerun with -AdoptUncommitted to let the first round inspect, finish, verify and commit them."
+    }
+    $adoptNote = "the working tree contains uncommitted changes left behind by an earlier round that did not finish ($(@($dirty).Count) paths; run git status). $hint Do not discard them unseen: inspect them, decide whether they are sound, finish and verify the work with the project's checks, and commit everything per protocol. Describe in the handoff what you found and what you did with it; if you throw any of it away, record why."
+}
 
 $implementers = @($cfg.pipeline.implementers | ForEach-Object { [string]$_ })
 $reviewer = [string]$cfg.pipeline.reviewer
@@ -180,6 +209,11 @@ $cycle = 1                 # review cycle: implementation phase + the review tha
 $nothingStreak = 0         # consecutive implementers that reported nothing left to do
 $implRoundsThisCycle = 0
 $notes = 'none'
+if ($adoptNote) {
+    $notes = $adoptNote
+    Write-Summary "Adopting uncommitted changes ($(@($dirty).Count) paths): round 1 is told to inspect, finish and commit them."
+    Write-Summary ''
+}
 $newQuestions = New-Object System.Collections.Generic.List[string]
 $stopReason = $null
 $exitCode = 1

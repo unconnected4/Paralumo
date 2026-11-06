@@ -1,11 +1,11 @@
 ---
 task: agent-orchestration
 title: Automate the implement/review loop between agents
-status: blocked
+status: in-progress
 branch: main
 started: 2026-09-29T14:39:07Z
-last_updated: 2026-10-28T17:39:53Z
-last_commit: 62ec3d4
+last_updated: 2026-11-06T10:13:03Z
+last_commit: d2fd9eb
 agents: [ClaudeC-Fable, AgyC-Gemini4Argon, CodexC-GPT5.6Terra]
 related_decisions: [docs/orchestration.md, AGENTS.md, docs/handoff/TEMPLATE.md]
 ---
@@ -34,6 +34,8 @@ Not yet verified: every path that needs a committing agent (the nothing-to-do st
 - Agent names aligned across the project (by Alex, 2026-10-28): the four headless names from `roles.json` plus the interactive ones from history are listed with their roles in `AGENTS.md`, the "incomplete on purpose" note is gone, and `docs/orchestration.md` names the agent per role.
 - Codex implementer model and name updated (by Alex, 2026-10-28): `gpt-5.6-terra` is accepted by the signed-in Codex CLI, so the role and agent are now `CodexC-GPT5.6Terra`.
 - Fixed final report handling for exactly one open Alex question by forcing `Get-OpenQuestions` output to an array.
+
+- Recovery from an interrupted round: a dirty tree at startup now names the unfinished run and round, and `-AdoptUncommitted` starts anyway and tells the first round to inspect, finish, verify and commit the leftovers. Documented in `docs/orchestration.md` ("Recovering from an interrupted round"). Tested in a scratch clone with a dirty tree and a fake unfinished run folder: the error message, the adopt path and the rendered `{notes}`.
 
 ## Tried and rejected
 - Agent triggers the next agent itself (Alex's first framing): rejected in favour of an external driver loop, because a crashed or forgetful agent silently breaks the chain and a hook firing inside a live session is fragile. Alex agreed.
@@ -65,7 +67,7 @@ Not yet verified: every path that needs a committing agent (the nothing-to-do st
 - ~~For Alex: the routing paths that need a committing agent are untested, because the interactive Claude Code session (auto mode) is not allowed to create a stand-in script that commits on its own. Test them with such a script yourself, or accept the first real run as the test?~~ → First real run accepted as the test (by Alex, 2026-10-28). Alex ran the loop on this task with `-StartWith gpt`: the Codex round committed a handoff-only update and the driver correctly counted it as "nothing to do"; the following Opus round failed at startup because the Claude CLI's OAuth session had expired (`claude auth status` → `loggedIn: false`). Not a driver bug: sign in again with `claude auth login` and rerun.
 
 ## Next step
-Alex: run `claude auth login` so the headless Claude roles can start, then rerun the loop. Cheapest full test of the routing: `powershell -ExecutionPolicy Bypass -File scripts/orchestrate/orchestrate.ps1 -Task step1-backend -Config AgentsOutput/orchestrator/roles-opus-only.json` (Opus only, cap 2 rounds per cycle, 3 rounds total, so round 3 is a Fable review). Then read `summary.md` in the run folder and the agents' commits, and fix whatever the real agents got wrong. Still unverified after this run: the full streak with three implementers, implementer `blocked` → review, reviewer `done` with handoff archiving.
+Alex: the Claude sign-in works again (the 2026-10-28 17:42 run on `step1-backend` started Opus, which worked for about half an hour). That run was interrupted before Opus committed, so its backend work is still uncommitted in the tree. Rerun with `powershell -ExecutionPolicy Bypass -File scripts/orchestrate/orchestrate.ps1 -Task step1-backend -Config AgentsOutput/orchestrator/roles-opus-only.json -AdoptUncommitted` and let it run to the end (three rounds: Opus adopts and commits, Opus again, Fable reviews). Then read `summary.md` in the run folder and the agents' commits, and fix whatever the real agents got wrong. Still unverified after that run: the full streak with three implementers, implementer `blocked` → review, reviewer `done` with handoff archiving.
 
 ## Session log
 - 2026-09-29T14:39:07Z ClaudeC-Fable: Agreed the design with Alex, wrote `docs/orchestration.md`, blocked on the permission classifier before any script was created.
@@ -81,6 +83,8 @@ Alex: run `claude auth login` so the headless Claude roles can start, then rerun
 
 - 2026-10-28T17:37:18Z ClaudeC-Fable: Diagnosed Alex's first live run: Codex round routed correctly, Opus round failed because the Claude CLI was signed out. Driver now prints the log tail on a failed round and checks all pipeline CLIs before round 1. Closed the testing question.
 - 2026-10-28T17:39:53Z CodexC-GPT5.6Terra: Verified the PowerShell parser and a clean-tree `-StartWith gpt` dry run at `62ec3d4`; its expected Terra command rendered successfully. `claude auth status` still reports `loggedIn: false`, so recorded the authentication requirement as an open Alex question and set the task blocked.
+
+- 2026-11-06T10:13:03Z ClaudeC-Fable: Alex's rerun on `step1-backend` was refused for a dirty tree: the 2026-10-28 17:42 Opus round had been interrupted with its work uncommitted. Added the unfinished-run hint and `-AdoptUncommitted`, documented the recovery, set status back to in-progress (auth blocker is gone).
 
 ## Outcome
 <!-- Filled in only when archiving. -->
