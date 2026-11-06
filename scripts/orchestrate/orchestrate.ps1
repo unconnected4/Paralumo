@@ -63,9 +63,17 @@ if (-not $Config) { $Config = Join-Path $scriptDir 'roles.json' }
 
 function Invoke-Git {
     param([Parameter(Mandatory = $true)][string[]]$GitArgs)
-    $out = & git @GitArgs
-    if ($LASTEXITCODE -ne 0) { throw "git $($GitArgs -join ' ') failed (exit $LASTEXITCODE)" }
-    return $out
+    # git writes UTF-8; PowerShell 5.1 decodes native output with the console's OEM code page
+    # unless told otherwise, which turns non-ASCII text from handoffs into mojibake in the summary.
+    $prevEncoding = [Console]::OutputEncoding
+    try {
+        [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+        $out = & git @GitArgs
+        if ($LASTEXITCODE -ne 0) { throw "git $($GitArgs -join ' ') failed (exit $LASTEXITCODE)" }
+        return $out
+    } finally {
+        [Console]::OutputEncoding = $prevEncoding
+    }
 }
 
 function Test-GitAncestor {
@@ -93,7 +101,7 @@ function Read-FrontMatter {
     # Returns a hashtable of the YAML-ish front matter scalars (key: value) of a handoff file.
     param([string]$Path)
     $result = @{}
-    $lines = Get-Content -LiteralPath $Path
+    $lines = Get-Content -Encoding UTF8 -LiteralPath $Path
     if ($lines.Count -eq 0 -or $lines[0].Trim() -ne '---') { return $result }
     for ($i = 1; $i -lt $lines.Count; $i++) {
         $line = $lines[$i]
@@ -109,7 +117,7 @@ function Get-OpenQuestions {
     # Open "For Alex:" lines of a handoff file: tagged, not struck through, not yet resolved.
     param([string]$Path)
     if (-not (Test-Path -LiteralPath $Path)) { return @() }
-    return @(Get-Content -LiteralPath $Path | ForEach-Object { $_.Trim() } | Where-Object {
+    return @(Get-Content -Encoding UTF8 -LiteralPath $Path | ForEach-Object { $_.Trim() } | Where-Object {
         $_ -match '^-\s*For Alex:' -and $_ -notmatch '\(resolved by ' -and $_ -notmatch '\(by Alex'
     } | ForEach-Object { $_ -replace '^-\s*', '' })
 }
@@ -127,7 +135,7 @@ $repoRoot = (Resolve-Path -LiteralPath $repoRoot).Path
 Set-Location -LiteralPath $repoRoot
 
 if (-not (Test-Path -LiteralPath $Config)) { throw "Config not found: $Config" }
-$cfg = Get-Content -LiteralPath $Config -Raw | ConvertFrom-Json
+$cfg = Get-Content -Encoding UTF8 -LiteralPath $Config -Raw | ConvertFrom-Json
 
 $handoffRel = "docs/handoff/active/$Task.md"
 $handoffPath = Join-Path $repoRoot $handoffRel
@@ -193,7 +201,7 @@ $runDir = Join-Path $repoRoot "AgentsOutput/orchestrator/$runStamp-$Task"
 New-Item -ItemType Directory -Force -Path $runDir | Out-Null
 $script:summaryPath = Join-Path $runDir 'summary.md'
 
-$commonTemplate = Get-Content -LiteralPath (Join-Path $scriptDir 'prompts/_common.md') -Raw
+$commonTemplate = Get-Content -Encoding UTF8 -LiteralPath (Join-Path $scriptDir 'prompts/_common.md') -Raw
 $implementerLabels = ($implementers | ForEach-Object { "$_ ($($cfg.roles.$_.agent))" }) -join ', '
 $loopStart = (Invoke-Git @('rev-parse', 'HEAD')) | Select-Object -First 1
 
@@ -234,7 +242,7 @@ while ($round -lt $MaxRounds) {
     if ($wantsModel -and -not $model) { throw "Role '$role' uses {model} in args but has no 'model' field in $Config" }
 
     # Render the prompt to a file; the agent gets a one-line pointer to it.
-    $roleTemplate = Get-Content -LiteralPath (Join-Path $repoRoot $roleCfg.prompt) -Raw
+    $roleTemplate = Get-Content -Encoding UTF8 -LiteralPath (Join-Path $repoRoot $roleCfg.prompt) -Raw
     $prompt = $roleTemplate.Replace('{common}', $commonTemplate.TrimEnd())
     $prompt = $prompt.Replace('{agent}', $agent).Replace('{task}', $Task).Replace('{handoff}', $handoffRel)
     $prompt = $prompt.Replace('{round}', [string]$round).Replace('{cycle}', [string]$cycle)
@@ -278,7 +286,7 @@ while ($round -lt $MaxRounds) {
     # ---- protocol checks, same for every role
     if ($proc.ExitCode -ne 0) {
         # Show the tail of both logs so the cause (e.g. an expired CLI login) is visible without opening files.
-        $tail = @(Get-Content -LiteralPath $stdoutPath, $stderrPath -ErrorAction SilentlyContinue |
+        $tail = @(Get-Content -Encoding UTF8 -LiteralPath $stdoutPath, $stderrPath -ErrorAction SilentlyContinue |
             Where-Object { $_.Trim() } | Select-Object -Last 5)
         $tailText = if ($tail.Count -gt 0) { $tail -join "`n  " } else { '(no output)' }
         $stopReason = "round $round ($role) exited with code $($proc.ExitCode). Last output:`n  $tailText`nFull logs: $stdoutPath, $stderrPath"
