@@ -35,6 +35,7 @@ Vocabulary app: dictionary lookup with per-sense saving and spaced-repetition pr
   - `ClaudeC-Fable`: Claude Code with Fable 5.1. Reviewer; also the name of interactive Claude Code sessions on Fable.
   - `ClaudeD-Fable5.1`: Claude (Cowork desktop). Interactive only.
   - `AgyD-Flash3.8`: Antigravity desktop with Gemini Flash 3.8. Interactive only; built the Step 0 web UI.
+  - `Claude-Opus5.5-Interactive`: Claude desktop app (Code tab) with Opus 5.5. Interactive only (by Alex, 2026-11-17: name assigned).
 - A new agent gets its name from Alex before its first commit, and a line in this list.
 - `AgentsOutput/<agent name>/` is each agent's scratch space for drafts, generated files and anything not ready for the repo. The whole folder is git-ignored. Write only in your own subfolder, and treat other agents' folders as read-only.
 - Nothing in `AgentsOutput/` is a source of truth. Anything that matters must be moved into the repo proper or recorded in a handoff file.
