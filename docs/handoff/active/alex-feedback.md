@@ -4,8 +4,8 @@ title: Collect Alex's feedback on the project, then turn it into instructions
 status: in-progress
 branch: main
 started: 2026-11-18T10:44:30Z
-last_updated: 2026-11-18T10:54:29Z
-last_commit: d9c1d73
+last_updated: 2026-11-18T11:01:16Z
+last_commit: 6111ec4
 agents: [Claude-Opus5.5-Interactive]
 related_decisions: []
 ---
@@ -36,6 +36,12 @@ Collecting. Nothing composed yet. Agents: don't act on these points until they a
 - **To settle when composing:** where the annotations live (e.g. `source_lang` on the lexeme, `target_lang` on the sense and card), the code format (ISO 639-1 such as `en`/`ru` is the obvious default), and the neutral names for example sentences, which are `{en, ru}` today.
 - **Status:** collected, not composed.
 
+### F3. Separate the dictionary lookup from the user's card state
+- **Said (by Alex):** "The code grabs everything (translation and cards) at one shot. I think it is incorrect. 1. If we are in the dictionary mode and just want to get the translation here and now, it might be timely from network perspective. 2. If we work with anonymous user, fetching cards doesn't make any sense at all. [...] translation itself should have its own endpoint, and cards operation must have their own. So UI at first looks for translation, then if applicable for saved options."
+- **Today (c7d8352 + 26e8c40):** `GET /api/dictionary/lookup` returns senses with `saved` and `card_id` for the signed-in user. `LookupService` depends on `CardService`. For an anonymous user the backend already skips the card query, but the response is still user-dependent, so it can't be shared or cached across users, and the lookup's latency includes the card query.
+- **Proposed shape (under discussion):** lookup becomes user-independent (no `saved`/`card_id`, works the same signed in or out, cacheable). Saved state comes from the cards resource, e.g. `GET /api/cards?sense_id=...` (repeated) returning the user's active cards for those senses. The web shows the translation first; if signed in, it then asks for the saved state and fills in the +/✓ buttons, which stay in a neutral pending state until then. This reverses the `saved: bool` on lookup in `docs/plan.md` Step 2 and the `card_id` added in 26e8c40.
+- **Status:** under discussion, not composed.
+
 ## Done
 - Nothing yet.
 
@@ -54,6 +60,7 @@ Keep collecting until Alex says to compose.
 ## Session log
 - 2026-11-18T10:44:30Z Claude-Opus5.5-Interactive: Started the feedback collection; recorded F1.
 - 2026-11-18T10:54:29Z Claude-Opus5.5-Interactive: Recorded Alex's scope answer for F1 and F2 (language annotations).
+- 2026-11-18T11:01:16Z Claude-Opus5.5-Interactive: Recorded F3 (separate lookup from card state), under discussion.
 
 ## Outcome
 <!-- Filled in only when archiving. -->
