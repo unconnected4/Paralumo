@@ -1,13 +1,13 @@
 ---
 task: feedback-amendments
 title: Apply Alex's feedback F1–F3 - agree the contract first, then implement it
-status: ready-for-review
+status: in-progress
 phase: contract                   # contract | implementation; switched only by the reviewer (see Goal)
 branch: main
 started: 2026-11-18T11:38:37Z
-last_updated: 2026-11-18T12:24:00Z
-last_commit: 00eb416
-agents: [Claude-Opus5.5-Interactive, ClaudeC-Opus5.5, AgyC-Gemini4Argon]
+last_updated: 2026-11-18T12:31:05Z
+last_commit: 4812af1
+agents: [Claude-Opus5.5-Interactive, ClaudeC-Opus5.5, AgyC-Gemini4Argon, CodexC-GPT5.6Terra]
 related_decisions: [intent.md, docs/api/proposals/feedback-amendments.md, backend/intent.md, web/intent.md, docs/plan.md]
 ---
 
@@ -64,7 +64,7 @@ Implement the agreed proposal exactly.
 - Backend `./gradlew check` and web lint, typecheck, tests and build pass with no warnings. If `e2e/` has tests by then, they pass too.
 
 ## Current state
-Phase 1 (`contract`), cycle 1. ClaudeC-Opus5.5 revised the draft after checking it against the code (see Decisions). AgyC-Gemini4Argon checked the revised proposal against the codebase and agreed without further edits. Proposals still open to challenge by the remaining implementers:
+Phase 1 (`contract`), cycle 1. CodexC-GPT5.6Terra found and resolved one implementation-critical cache-header ambiguity while checking the full proposal against the current API, backend and web consumers. The proposal changed, so the agreement streak restarts. Proposals still open to challenge by the implementers:
 - the cache max-age values (2)
 - the 100-id limit (2)
 - signed-out buttons (3.6)
@@ -79,12 +79,15 @@ Phase 1 (`contract`), cycle 1. ClaudeC-Opus5.5 revised the draft after checking 
 - Draft contract written: `docs/api/proposals/feedback-amendments.md`.
 - Cycle 1, ClaudeC-Opus5.5: draft checked against `backend/src`, `web/src` and the security and error-handling config, then revised (Decisions). A new section 4 lists every consumer to update, so the old section 4 is now section 5.
 - Cycle 1, AgyC-Gemini4Argon: verified the revised contract against `backend/src`, `web/src` and `docs/api/openapi.json`, and recorded agreement.
+- Cycle 1, CodexC-GPT5.6Terra: verified the proposal against the current controllers, shared exception handler, security configuration, provider/persistence model, generated client, hooks, views and MSW handlers. Clarified the lookup-local cache-header path for both successful and 404 responses.
 
 ## Tried and rejected
 - Filtering `GET /api/cards` by `sense_id` for saved state. Rejected by Alex, who prefers two separate endpoints.
 - Firing the lookup and the saved-state request together, keyed by the word (`?lemma=`). Rejected because a card's stored lemma may not match the provider's normalisation of the query, and Alex chose "lookup first, then saved state".
 - Recomputing the sense ids in SQL inside V2 to keep local cards (ClaudeC-Opus5.5). Rejected: Postgres `lower()` follows the collation and can differ from Java's `toLowerCase(Locale.ROOT)`, so ids could silently mismatch. Telling developers to recreate the database was also rejected, because a skipped doc step leaves stale rows.
 - `ExampleSentence.source` as the new name for `en` (draft). Replaced by `text`, because `source` already names the provider (`senses.source`, `DictionaryProvider.source()`).
+- Backend `./gradlew.bat check` in this session. Blocked before compilation because this machine has no JDK 25 toolchain; Docker is also unavailable on `PATH`, so its required integration-test infrastructure cannot be started. This is environment setup, not a contract defect.
+- Web `npm run lint`, `npm run typecheck`, `npm test -- --run`, and `npm run build`. All commands exited 0; the production build completed without warnings.
 
 ## Decisions made during this task
 - Two phases in one task, switched by the reviewer (by Alex, see Goal). It's one task rather than two so the implementation starts automatically once the reviewer approves, using the driver's existing reviewer `in-progress` route. The driver's note to that cycle will say "the reviewer recorded findings". At the switch, read Next step and `phase` instead.
@@ -96,12 +99,13 @@ Phase 1 (`contract`), cycle 1. ClaudeC-Opus5.5 revised the draft after checking 
   - Caching details: only the lookup's 404 is cacheable, not the shared `NotFoundException`; other errors stay `no-store`; `Vary: Origin` is allowed; a token on the request never changes the response. The lookup keeps its `SenseCatalog` write on cache misses.
   - Saved-state endpoint details: repeated-parameter form; a missing parameter gives 422, not Spring's default 400, through an `ApiExceptionHandler` override; 401 wins over 422; duplicate ids allowed; schema `SavedSense`, operation id `listSavedSenses`.
   - Web: the lookup is never invalidated by save, unsave or auth changes; the saved-state key includes the user id; sign-out removes saved-state queries; a delete on My Words updates the saved-state cache too.
+  - Cache-header implementation, cycle 1 (CodexC-GPT5.6Terra): `NotFoundException` currently reaches the shared `ApiExceptionHandler`, which must not make every card 404 publicly cacheable. The proposal now requires `DictionaryController` to handle its own lookup 404 and to return successful lookups via `ResponseEntity`, making the specified 200 and lookup-only 404 headers implementable without changing the shared handler.
 
 ## Open questions
 - None yet.
 
 ## Next step
-Phase 1, `contract`. Review [docs/api/proposals/feedback-amendments.md](../../api/proposals/feedback-amendments.md) as described in Goal → Phase 1. Either improve it (`in-progress`) or record your agreement under "Contract agreement" (`ready-for-review`).
+Phase 1, `contract`. Review [docs/api/proposals/feedback-amendments.md](../../api/proposals/feedback-amendments.md) as described in Goal → Phase 1. The cycle 1 cache-header clarification changed the proposal, so agreement must restart. Either improve it (`in-progress`) or record your agreement under "Contract agreement" (`ready-for-review`).
 
 <!-- Phase 2 list, for the reviewer to paste into Next step when switching phase:
 1. Backend: V2 migration, then provider records, entities, DTOs, fake data, the sense id (as agreed), the lookup without user state and with cache headers, and `GET /api/cards/saved`. Tests updated and added. Run `./gradlew check`.
@@ -116,6 +120,7 @@ Phase 1, `contract`. Review [docs/api/proposals/feedback-amendments.md](../../ap
 - 2026-11-18T11:38:37Z Claude-Opus5.5-Interactive: Composed F1–F3 into this task and the draft contract. Phase 1 is ready to run.
 - 2026-11-18T12:30:00Z ClaudeC-Opus5.5: Cycle 1. Checked the proposal against the code, settled the sense-id/reset question, filled gaps in caching, saved-state validation, the web cache and the consumer list. Proposal changed, so status is in-progress.
 - 2026-11-18T12:24:00Z AgyC-Gemini4Argon: Cycle 1. Verified the revised contract proposal against backend/src, web/src, V1 migration and docs/api/openapi.json. Found nothing left to change in the proposal; recorded agreement under Contract agreement (status ready-for-review).
+- 2026-11-18T12:31:05Z CodexC-GPT5.6Terra: Cycle 1. Checked the proposal against the current controllers, exception handling, persistence/provider model and web consumers. Clarified the controller-local cache response path; proposal changed, so status is in-progress and agreement restarts. Web checks passed; backend checks are blocked by the missing JDK 25 and Docker.
 
 ## Outcome
 <!-- Filled in only when archiving. -->

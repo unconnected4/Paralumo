@@ -60,7 +60,7 @@ The V2 migration itself resets existing local data. Before the renames, it delet
 - Errors are unchanged: unknown word → `404 {detail}`; empty query → `200` with no lexemes.
 - Caching, so a reverse proxy can cache it:
   - `200`: `Cache-Control: public, max-age=3600`.
-  - `404`: `Cache-Control: public, max-age=300`. Only the lookup's 404 is cacheable. `NotFoundException` is shared with the card endpoints (unknown sense on save, unknown card on delete), so the lookup sets the header itself, not the shared exception handler.
+  - `404`: `Cache-Control: public, max-age=300`. Only the lookup's 404 is cacheable. `NotFoundException` is shared with the card endpoints (unknown sense on save, unknown card on delete), so `DictionaryController` handles the lookup's exception locally and returns its normal problem body with this header; the shared exception handler remains unchanged. The controller returns the successful lookup through `ResponseEntity` with the 200 header too, including for an empty query.
   - Any other status (`5xx`, or a `4xx` other than 404) keeps the default `no-store`, so an outage is never cached.
   - An empty query's `200` gets the same header as any other `200`.
   - No `Set-Cookie`, and no `Vary: Cookie` or `Vary: Authorization`. `Vary: Origin`, and the other `Vary` values Spring's CORS support adds, are allowed and expected: they keep the CORS headers correct in a shared cache. The header test checks that `Vary` doesn't name `Cookie` or `Authorization`. It doesn't require `Vary` to be absent.
