@@ -1,11 +1,11 @@
 {
   "pipeline": {
-    "implementers": ["opus", "gemini", "gpt"],
+    "implementers": ["opus", "gemini", "gpt", "muse"],
     "reviewer": "fable"
   },
   "limits": {
     "maxRounds": 30,
-    "maxImplementationRoundsPerCycle": 9,
+    "maxImplementationRoundsPerCycle": 12,
     "roundTimeoutMinutes": 90
   },
   "env": {
@@ -31,6 +31,13 @@
       "command": "codex",
       "model": "gpt-5.6-terra",
       "args": ["exec", "--model", "{model}", "--dangerously-bypass-approvals-and-sandbox", "{prompt}"],
+      "prompt": "scripts/orchestrate/prompts/implement.md"
+    },
+    "muse": {
+      "agent": "MuseC-Spark1.3",
+      "command": "muse",
+      "model": "muse-spark-1.3",
+      "args": ["exec", "--model", "{model}", "--yolo", "--disable-request-user-input", "{prompt}"],
       "prompt": "scripts/orchestrate/prompts/implement.md"
     },
     "fable": {

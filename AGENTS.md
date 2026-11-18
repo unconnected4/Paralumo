@@ -32,6 +32,7 @@ Vocabulary app: dictionary lookup with per-sense saving and spaced-repetition pr
   - `ClaudeC-Opus5.5`: Claude Code with Opus 5.5. Implementer, first in the order.
   - `AgyC-Gemini4Argon`: Antigravity CLI (`agy`) with Gemini 4 Argon. Implementer, second.
   - `CodexC-GPT5.6Terra`: Codex CLI with GPT-5.6 Terra. Implementer, third.
+  - `MuseC-Spark1.3`: Muse Code CLI (`muse`) with Meta's muse-spark-1.3. Implementer, fourth (by Alex, 2026-11-18: name and position assigned).
   - `ClaudeC-Fable`: Claude Code with Fable 5.1. Reviewer; also the name of interactive Claude Code sessions on Fable.
   - `ClaudeD-Fable5.1`: Claude (Cowork desktop). Interactive only.
   - `AgyD-Flash3.8`: Antigravity desktop with Gemini Flash 3.8. Interactive only; built the Step 0 web UI.
