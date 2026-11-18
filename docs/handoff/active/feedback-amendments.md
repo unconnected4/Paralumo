@@ -5,8 +5,8 @@ status: ready-for-review
 phase: contract                   # contract | implementation; switched only by the reviewer (see Goal)
 branch: main
 started: 2026-11-18T11:38:37Z
-last_updated: 2026-11-18T13:00:00Z
-last_commit: ea51d07
+last_updated: 2026-11-18T13:06:00Z
+last_commit: 7f37396
 agents: [Claude-Opus5.5-Interactive, ClaudeC-Opus5.5, AgyC-Gemini4Argon, CodexC-GPT5.6Terra, MuseC-Spark1.3]
 related_decisions: [intent.md, docs/api/proposals/feedback-amendments.md, backend/intent.md, web/intent.md, docs/plan.md]
 ---
@@ -64,7 +64,7 @@ Implement the agreed proposal exactly.
 - Backend `./gradlew check` and web lint, typecheck, tests and build pass with no warnings. If `e2e/` has tests by then, they pass too.
 
 ## Current state
-Phase 1 (`contract`), cycle 2. After ClaudeC-Opus5.5 added the `HandlerMethodValidationException` override to the saved-state `422` rule in section 2, AgyC-Gemini4Argon and CodexC-GPT5.6Terra verified the updated proposal against the codebase and recorded agreement. The remaining implementer in cycle 2 (MuseC-Spark1.3) should now review the proposal and either challenge/improve it (`in-progress`) or record agreement (`ready-for-review`). Proposals still open to challenge by the implementers:
+Phase 1 (`contract`), cycle 2. After ClaudeC-Opus5.5 added the `HandlerMethodValidationException` override to the saved-state `422` rule in section 2, AgyC-Gemini4Argon, CodexC-GPT5.6Terra and MuseC-Spark1.3 verified the updated proposal against the codebase and recorded agreement. The remaining implementer in cycle 2 (ClaudeC-Opus5.5, who authored the last change and has not recorded agreement since) should now review the proposal and either challenge/improve it (`in-progress`) or record agreement (`ready-for-review`). Proposals still open to challenge by the implementers:
 - the cache max-age values (2)
 - the 100-id limit (2)
 - signed-out buttons (3.6)
@@ -76,6 +76,7 @@ Phase 1 (`contract`), cycle 2. After ClaudeC-Opus5.5 added the `HandlerMethodVal
 - AgyC-Gemini4Argon, cycle 1: agree (checked against `backend/src`, `web/src`, `V1__create_users_lexemes_senses_cards.sql` and `docs/api/openapi.json`; all cycle 1 revisions and open proposals — cache TTLs, 100-id cap, signed-out active "+" buttons, and keeping language names in UI copy — are complete and consistent with F1–F3)
 - AgyC-Gemini4Argon, cycle 2: agree (verified the cycle 1 and cycle 2 revisions — controller-local lookup 200/404 cache headers, updated backend-test consumer list, and `HandlerMethodValidationException` override in `ApiExceptionHandler` for `@Size(min = 1, max = 100) List<@NotBlank String>` — against `DictionaryController`, `CardController`, `ApiExceptionHandler`, `CardApiTest`, `DictionaryApiTest` and `web/src`)
 - CodexC-GPT5.6Terra, cycle 2: agree (verified the lookup response/cache path, saved-state validation and authorization ordering, persistence migration plan, generated-client boundary, and web query/cache behavior against the current source; web lint, typecheck, 28 tests and build pass)
+- MuseC-Spark1.3, cycle 2: agree (verified the 422 override pair against the spring-webmvc-7.0.10 sources, the cache-header override against the spring-security-web-7.1.2 sources, and the section 4 consumer list against `git grep` over `backend/src`, `web/src` and `docs/api/openapi.json`; web lint, typecheck, 28 tests and build pass)
 
 ## Done
 - Draft contract written: `docs/api/proposals/feedback-amendments.md`.
@@ -87,6 +88,7 @@ Phase 1 (`contract`), cycle 2. After ClaudeC-Opus5.5 added the `HandlerMethodVal
 - Cycle 2, AgyC-Gemini4Argon: verified the cycle 1 and cycle 2 revisions (controller-local lookup 200/404 cache headers, backend test consumer updates, and `HandlerMethodValidationException` override for saved-state parameter validation) against `backend/src`, `web/src` and `docs/api/openapi.json`, and recorded agreement.
 
 - Cycle 2, CodexC-GPT5.6Terra: verified the proposal's lookup/cache, saved-state, language-neutral migration and web-client clauses against the current source, found no change needed, and recorded agreement. Web lint, typecheck, 28 tests and build pass.
+- Cycle 2, MuseC-Spark1.3: verified the proposal against the framework sources in the Gradle cache, `backend/src`, `web/src` and `docs/api/openapi.json`, found no change needed, and recorded agreement. Web lint, typecheck, 28 tests and build pass; backend `./gradlew check` not re-run (handoff-only change; no `docker` or `JAVA_HOME` in this session).
 
 ## Tried and rejected
 - Filtering `GET /api/cards` by `sense_id` for saved state. Rejected by Alex, who prefers two separate endpoints.
@@ -123,6 +125,13 @@ Phase 1 (`contract`), cycle 2. After ClaudeC-Opus5.5 added the `HandlerMethodVal
   - `AudioButton`'s `lang` prop and `en-US` default stay: `lang` is the neutral language concept (not a language name), and deriving the voice from `source_lang` is deferred with the second pair, like proposal 3.7.
   - Language names in API summaries and code comments ("Look up an English word", "Main Russian translation") stay as descriptive text: F1 bans languages from code structure, and the acceptance criteria ban them only in identifiers, types, columns, JSON fields and file names.
   - The empty-query 200 keeps the same response shape (root pair present, empty lexemes); the web client's local empty-query short-circuit picks up the fixed pair during implementation.
+- Checked and left unchanged, cycle 2 (MuseC-Spark1.3):
+  - Both 422 overrides exist as overridable methods on `ResponseEntityExceptionHandler` in the project's Spring version (verified in the `spring-webmvc-7.0.10-sources.jar` from the Gradle cache: `handleMissingServletRequestParameter` and `handleHandlerMethodValidationException`, dispatched with the exception's own status, which the override replaces with 422). The pattern matches the two existing overrides in `ApiExceptionHandler`.
+  - The parameter constraints need `@Validated` on `CardController` to trigger method validation at all; the proposal names the constraints but not the annotation. Left out of the proposal deliberately: the 422 behaviour itself is fully specified, and the required saved-state 422 tests fail loudly if the annotation is missing, so this is mechanism, not contract, and not worth resetting the agreement round. Phase-2 implementer: add `@Validated` with the constraints.
+  - A controller-set `Cache-Control` survives Spring Security without a `SecurityConfig` change (verified in the `spring-security-web-7.1.2-sources.jar`: `HeaderWriterFilter` writes headers after the chain by default, and `CacheControlHeadersWriter` returns early when the response already carries `Cache-Control`). Section 4 correctly omits `SecurityConfig`. (The default value is `no-cache, no-store, max-age=0, must-revalidate`; the proposal's "no-cache, no-store" is shorthand, not a normative quote.)
+  - `ProviderLexeme` is correctly absent from section 4: it already uses neutral names, and per section 1 the catalog, sense id and DTO mapping read the pair from `DictionaryProvider.pair()`, not from the lexeme record, so it needs no edit.
+  - No `src/test/resources/fixtures/` directory exists yet (the backend `AGENTS.md` layout mentions it), so section 4 correctly lists no fixture updates. The only grep hit under `src/test/resources` is the unrelated `env: test` line in `application-integration.yaml`.
+  - Section 4 completeness re-checked with `git grep` for `translation_ru|synonyms_ru|meanings_en` and the camelCase variants plus `saved|card_id`: every hit is either listed (backend controllers, `Dtos`, entities, `FakeDictionaryProvider`, `ProviderSense`, `SenseIds`, `SenseCatalog`, fake-data JSON, `CardApiTest`, `DictionaryApiTest`, `FakeDictionaryProviderTest`, web views, `SenseCard`, mocks, `schema.d.ts`, `client.test.ts`, `App.test.tsx`) or correctly unlisted (`V1__...sql`, never edited; `LexemeEntity`/`LexemeRepository`/`LANG_EN` found via the `lang` grep and listed; `MaxUtf8Bytes` matches only `java.lang`).
 
 ## Open questions
 - None yet.
@@ -149,6 +158,7 @@ Phase 1, `contract`. Review [docs/api/proposals/feedback-amendments.md](../../ap
 - 2026-11-18T12:55:00Z AgyC-Gemini4Argon: Cycle 2. Verified the cycle 1 and cycle 2 proposal revisions (lookup-local cache headers, backend test consumers, and HandlerMethodValidationException override in ApiExceptionHandler) against backend/src, web/src and docs/api/openapi.json. Found nothing left to change in the proposal; recorded agreement under Contract agreement (status ready-for-review). Backend ./gradlew check and web lint, typecheck, 28 tests and build pass.
 
 - 2026-11-18T13:00:00Z CodexC-GPT5.6Terra: Cycle 2. Verified the proposal against the current endpoint, validation, security, persistence, generated-client and web-query paths. Found nothing left to change; recorded agreement under Contract agreement (status ready-for-review). Web lint, typecheck, 28 tests and build pass.
+- 2026-11-18T13:06:00Z MuseC-Spark1.3: Cycle 2. Verified the 422 overrides and cache-header override against the framework sources and the consumer list against git grep. Found nothing left to change; recorded agreement under Contract agreement (status ready-for-review). Web lint, typecheck, 28 tests and build pass.
 
 ## Outcome
 <!-- Filled in only when archiving. -->
