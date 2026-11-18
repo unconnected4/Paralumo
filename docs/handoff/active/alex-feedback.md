@@ -4,8 +4,8 @@ title: Collect Alex's feedback on the project, then turn it into instructions
 status: in-progress
 branch: main
 started: 2026-11-18T10:44:30Z
-last_updated: 2026-11-18T11:06:32Z
-last_commit: bb13f6b
+last_updated: 2026-11-18T11:08:51Z
+last_commit: af74a6f
 agents: [Claude-Opus5.5-Interactive]
 related_decisions: []
 ---
@@ -40,7 +40,8 @@ Collecting. Nothing composed yet. Agents: don't act on these points until they a
 - **Said (by Alex):** "The code grabs everything (translation and cards) at one shot. I think it is incorrect. 1. If we are in the dictionary mode and just want to get the translation here and now, it might be timely from network perspective. 2. If we work with anonymous user, fetching cards doesn't make any sense at all. [...] translation itself should have its own endpoint, and cards operation must have their own. So UI at first looks for translation, then if applicable for saved options."
 - **Today (c7d8352 + 26e8c40):** `GET /api/dictionary/lookup` returns senses with `saved` and `card_id` for the signed-in user. `LookupService` depends on `CardService`. For an anonymous user the backend already skips the card query, but the response is still user-dependent, so it can't be shared or cached across users, and the lookup's latency includes the card query.
 - **Agreed shape (by Alex):** "I prefer to have two different endpoints. get translation first (this request can be cached on reverse proxy), when we got an answer fire a request for saved cards if applicable." So: (1) the lookup is user-independent: no `saved`/`card_id`, never reads the session, the same response signed in or out, with cache headers that let a reverse proxy cache it. (2) Saved state has its own endpoint, separate from `GET /api/cards` (the vocabulary list), taking the sense ids from the lookup and returning which are saved with their `card_id`; signed-in only. (3) The web requests the lookup first and, once it has answered and only if the user is signed in, requests the saved state. This reverses the `saved: bool` on lookup in `docs/plan.md` Step 2 and the `card_id` on lookup added in 26e8c40.
-- **To settle when composing:** the saved-state endpoint's path and shape (proposal: `GET /api/cards/saved?sense_id=a&sense_id=b` returning `[{sense_id, card_id}]`), the cache headers and TTL for the lookup, and what the +/✓ buttons show while the saved state loads (proposal: a neutral pending state, so nothing flips from + to ✓).
+- **To settle when composing:** the saved-state endpoint's path and shape (proposal: `GET /api/cards/saved?sense_id=a&sense_id=b` returning `[{sense_id, card_id}]`), the cache headers and TTL for the lookup.
+- **Buttons while loading (by Alex):** "Yes. It is what I want, unless we got the response [...] buttons are in some sort of inactive sate." The +/✓ buttons are shown inactive (disabled, neutral) until the saved-state response arrives, so nothing flips from + to ✓. Still to settle: what anonymous users see, since they never request saved state (today: + leads to sign-in).
 - **Status:** agreed in principle, not composed.
 
 ## Done
@@ -63,6 +64,7 @@ Keep collecting until Alex says to compose.
 - 2026-11-18T10:54:29Z Claude-Opus5.5-Interactive: Recorded Alex's scope answer for F1 and F2 (language annotations).
 - 2026-11-18T11:01:16Z Claude-Opus5.5-Interactive: Recorded F3 (separate lookup from card state), under discussion.
 - 2026-11-18T11:06:32Z Claude-Opus5.5-Interactive: Recorded Alex's F3 answer: separate saved-state endpoint, lookup first and cacheable on a reverse proxy.
+- 2026-11-18T11:08:51Z Claude-Opus5.5-Interactive: Recorded F3 button state: inactive until saved state arrives (by Alex).
 
 ## Outcome
 <!-- Filled in only when archiving. -->
