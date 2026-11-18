@@ -1,13 +1,13 @@
 ---
 task: feedback-amendments
 title: Apply Alex's feedback F1–F3 - agree the contract first, then implement it
-status: in-progress
+status: ready-for-review
 phase: contract                   # contract | implementation; switched only by the reviewer (see Goal)
 branch: main
 started: 2026-11-18T11:38:37Z
-last_updated: 2026-11-18T12:30:00Z
-last_commit: 502e708
-agents: [Claude-Opus5.5-Interactive, ClaudeC-Opus5.5]
+last_updated: 2026-11-18T12:24:00Z
+last_commit: 00eb416
+agents: [Claude-Opus5.5-Interactive, ClaudeC-Opus5.5, AgyC-Gemini4Argon]
 related_decisions: [intent.md, docs/api/proposals/feedback-amendments.md, backend/intent.md, web/intent.md, docs/plan.md]
 ---
 
@@ -64,7 +64,7 @@ Implement the agreed proposal exactly.
 - Backend `./gradlew check` and web lint, typecheck, tests and build pass with no warnings. If `e2e/` has tests by then, they pass too.
 
 ## Current state
-Phase 1 (`contract`), cycle 1. ClaudeC-Opus5.5 revised the draft after checking it against the code (see Decisions), so no agreement has been recorded yet. Proposals still open to challenge:
+Phase 1 (`contract`), cycle 1. ClaudeC-Opus5.5 revised the draft after checking it against the code (see Decisions). AgyC-Gemini4Argon checked the revised proposal against the codebase and agreed without further edits. Proposals still open to challenge by the remaining implementers:
 - the cache max-age values (2)
 - the 100-id limit (2)
 - signed-out buttons (3.6)
@@ -73,10 +73,12 @@ Phase 1 (`contract`), cycle 1. ClaudeC-Opus5.5 revised the draft after checking 
 
 ## Contract agreement
 <!-- Phase 1 only. One line per implementer per cycle: "- <agent>, cycle <n>: agree (<remarks>)". A proposal change after a line makes earlier lines stale; agreement then starts over. -->
+- AgyC-Gemini4Argon, cycle 1: agree (checked against `backend/src`, `web/src`, `V1__create_users_lexemes_senses_cards.sql` and `docs/api/openapi.json`; all cycle 1 revisions and open proposals — cache TTLs, 100-id cap, signed-out active "+" buttons, and keeping language names in UI copy — are complete and consistent with F1–F3)
 
 ## Done
 - Draft contract written: `docs/api/proposals/feedback-amendments.md`.
 - Cycle 1, ClaudeC-Opus5.5: draft checked against `backend/src`, `web/src` and the security and error-handling config, then revised (Decisions). A new section 4 lists every consumer to update, so the old section 4 is now section 5.
+- Cycle 1, AgyC-Gemini4Argon: verified the revised contract against `backend/src`, `web/src` and `docs/api/openapi.json`, and recorded agreement.
 
 ## Tried and rejected
 - Filtering `GET /api/cards` by `sense_id` for saved state. Rejected by Alex, who prefers two separate endpoints.
@@ -113,6 +115,7 @@ Phase 1, `contract`. Review [docs/api/proposals/feedback-amendments.md](../../ap
 <!-- Append one line per session. Never rewrite earlier lines. -->
 - 2026-11-18T11:38:37Z Claude-Opus5.5-Interactive: Composed F1–F3 into this task and the draft contract. Phase 1 is ready to run.
 - 2026-11-18T12:30:00Z ClaudeC-Opus5.5: Cycle 1. Checked the proposal against the code, settled the sense-id/reset question, filled gaps in caching, saved-state validation, the web cache and the consumer list. Proposal changed, so status is in-progress.
+- 2026-11-18T12:24:00Z AgyC-Gemini4Argon: Cycle 1. Verified the revised contract proposal against backend/src, web/src, V1 migration and docs/api/openapi.json. Found nothing left to change in the proposal; recorded agreement under Contract agreement (status ready-for-review).
 
 ## Outcome
 <!-- Filled in only when archiving. -->
