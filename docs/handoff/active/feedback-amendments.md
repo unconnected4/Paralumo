@@ -5,9 +5,9 @@ status: in-progress
 phase: contract                   # contract | implementation; switched only by the reviewer (see Goal)
 branch: main
 started: 2026-11-18T11:38:37Z
-last_updated: 2026-11-18T11:38:37Z
-last_commit: 9251e2e
-agents: [Claude-Opus5.5-Interactive]
+last_updated: 2026-11-18T12:30:00Z
+last_commit: 502e708
+agents: [Claude-Opus5.5-Interactive, ClaudeC-Opus5.5]
 related_decisions: [intent.md, docs/api/proposals/feedback-amendments.md, backend/intent.md, web/intent.md, docs/plan.md]
 ---
 
@@ -60,30 +60,40 @@ Implement the agreed proposal exactly.
   - no saved-state request when signed out
   - the retry state
 - `docs/api/openapi.json` has been re-exported and `web/src/api/schema.d.ts` regenerated.
-- The docs named in proposal section 4 are updated.
+- The docs named in proposal section 5 are updated.
 - Backend `./gradlew check` and web lint, typecheck, tests and build pass with no warnings. If `e2e/` has tests by then, they pass too.
 
 ## Current state
-Phase 1 (`contract`) has not started. The draft proposal was written by Claude-Opus5.5-Interactive from Alex's answers. It contains open proposals that agents should test hard:
-- the sense id change and the reset of local data (1)
+Phase 1 (`contract`), cycle 1. ClaudeC-Opus5.5 revised the draft after checking it against the code (see Decisions), so no agreement has been recorded yet. Proposals still open to challenge:
 - the cache max-age values (2)
 - the 100-id limit (2)
 - signed-out buttons (3.6)
 - language names in UI text (3.7)
+- the revisions made in cycle 1 (Decisions)
 
 ## Contract agreement
 <!-- Phase 1 only. One line per implementer per cycle: "- <agent>, cycle <n>: agree (<remarks>)". A proposal change after a line makes earlier lines stale; agreement then starts over. -->
 
 ## Done
 - Draft contract written: `docs/api/proposals/feedback-amendments.md`.
+- Cycle 1, ClaudeC-Opus5.5: draft checked against `backend/src`, `web/src` and the security and error-handling config, then revised (Decisions). A new section 4 lists every consumer to update, so the old section 4 is now section 5.
 
 ## Tried and rejected
 - Filtering `GET /api/cards` by `sense_id` for saved state. Rejected by Alex, who prefers two separate endpoints.
 - Firing the lookup and the saved-state request together, keyed by the word (`?lemma=`). Rejected because a card's stored lemma may not match the provider's normalisation of the query, and Alex chose "lookup first, then saved state".
+- Recomputing the sense ids in SQL inside V2 to keep local cards (ClaudeC-Opus5.5). Rejected: Postgres `lower()` follows the collation and can differ from Java's `toLowerCase(Locale.ROOT)`, so ids could silently mismatch. Telling developers to recreate the database was also rejected, because a skipped doc step leaves stale rows.
+- `ExampleSentence.source` as the new name for `en` (draft). Replaced by `text`, because `source` already names the provider (`senses.source`, `DictionaryProvider.source()`).
 
 ## Decisions made during this task
 - Two phases in one task, switched by the reviewer (by Alex, see Goal). It's one task rather than two so the implementation starts automatically once the reviewer approves, using the driver's existing reviewer `in-progress` route. The driver's note to that cycle will say "the reviewer recorded findings". At the switch, read Next step and `phase` instead.
 - During phase 1, agreement is recorded only in this handoff, not in the proposal. The driver counts handoff-only rounds as "nothing to do", so a full streak of agreements leads to review.
+- Proposal revisions, cycle 1 (ClaudeC-Opus5.5). Each one is a proposal that later agents may challenge:
+  - Sense id includes both languages: confirmed. The V2 migration deletes `user_cards`, `senses` and `lexemes` rows and keeps `users`, because there is no production data. As a result, the JSONB example keys need no rewrite.
+  - The provider is the single source of the language pair (`DictionaryProvider.pair()` returning a `LanguagePair` record). This replaces the draft's "configuration or a constant".
+  - `ExampleSentence.text` instead of `.source`.
+  - Caching details: only the lookup's 404 is cacheable, not the shared `NotFoundException`; other errors stay `no-store`; `Vary: Origin` is allowed; a token on the request never changes the response. The lookup keeps its `SenseCatalog` write on cache misses.
+  - Saved-state endpoint details: repeated-parameter form; a missing parameter gives 422, not Spring's default 400, through an `ApiExceptionHandler` override; 401 wins over 422; duplicate ids allowed; schema `SavedSense`, operation id `listSavedSenses`.
+  - Web: the lookup is never invalidated by save, unsave or auth changes; the saved-state key includes the user id; sign-out removes saved-state queries; a delete on My Words updates the saved-state cache too.
 
 ## Open questions
 - None yet.
@@ -102,6 +112,7 @@ Phase 1, `contract`. Review [docs/api/proposals/feedback-amendments.md](../../ap
 ## Session log
 <!-- Append one line per session. Never rewrite earlier lines. -->
 - 2026-11-18T11:38:37Z Claude-Opus5.5-Interactive: Composed F1–F3 into this task and the draft contract. Phase 1 is ready to run.
+- 2026-11-18T12:30:00Z ClaudeC-Opus5.5: Cycle 1. Checked the proposal against the code, settled the sense-id/reset question, filled gaps in caching, saved-state validation, the web cache and the consumer list. Proposal changed, so status is in-progress.
 
 ## Outcome
 <!-- Filled in only when archiving. -->
