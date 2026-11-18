@@ -5,9 +5,9 @@ status: in-progress
 phase: contract                   # contract | implementation; switched only by the reviewer (see Goal)
 branch: main
 started: 2026-11-18T11:38:37Z
-last_updated: 2026-11-18T12:31:05Z
-last_commit: 4812af1
-agents: [Claude-Opus5.5-Interactive, ClaudeC-Opus5.5, AgyC-Gemini4Argon, CodexC-GPT5.6Terra]
+last_updated: 2026-11-18T12:36:02Z
+last_commit: 4f2db63
+agents: [Claude-Opus5.5-Interactive, ClaudeC-Opus5.5, AgyC-Gemini4Argon, CodexC-GPT5.6Terra, MuseC-Spark1.3]
 related_decisions: [intent.md, docs/api/proposals/feedback-amendments.md, backend/intent.md, web/intent.md, docs/plan.md]
 ---
 
@@ -64,7 +64,7 @@ Implement the agreed proposal exactly.
 - Backend `./gradlew check` and web lint, typecheck, tests and build pass with no warnings. If `e2e/` has tests by then, they pass too.
 
 ## Current state
-Phase 1 (`contract`), cycle 1. CodexC-GPT5.6Terra found and resolved one implementation-critical cache-header ambiguity while checking the full proposal against the current API, backend and web consumers. The proposal changed, so the agreement streak restarts. Proposals still open to challenge by the implementers:
+Phase 1 (`contract`), cycle 1. MuseC-Spark1.3 checked the proposal against the current API, backend, web and test consumers and fixed the backend-test consumer list (section 4): `CardApiTest` also asserts lookup-embedded saved/card_id, and `DictionaryApiTest` also needs the renames. The proposal changed, so the agreement streak restarts. Proposals still open to challenge by the implementers:
 - the cache max-age values (2)
 - the 100-id limit (2)
 - signed-out buttons (3.6)
@@ -80,6 +80,7 @@ Phase 1 (`contract`), cycle 1. CodexC-GPT5.6Terra found and resolved one impleme
 - Cycle 1, ClaudeC-Opus5.5: draft checked against `backend/src`, `web/src` and the security and error-handling config, then revised (Decisions). A new section 4 lists every consumer to update, so the old section 4 is now section 5.
 - Cycle 1, AgyC-Gemini4Argon: verified the revised contract against `backend/src`, `web/src` and `docs/api/openapi.json`, and recorded agreement.
 - Cycle 1, CodexC-GPT5.6Terra: verified the proposal against the current controllers, shared exception handler, security configuration, provider/persistence model, generated client, hooks, views and MSW handlers. Clarified the lookup-local cache-header path for both successful and 404 responses.
+- Cycle 1, MuseC-Spark1.3: verified the proposal against `docs/api/openapi.json`, `backend/src` (main + tests), `web/src` (api, hooks, views, mocks, tests) and the e2e placeholder. Fixed the section 4 backend-test bullets. Everything else held up.
 
 ## Tried and rejected
 - Filtering `GET /api/cards` by `sense_id` for saved state. Rejected by Alex, who prefers two separate endpoints.
@@ -100,18 +101,27 @@ Phase 1 (`contract`), cycle 1. CodexC-GPT5.6Terra found and resolved one impleme
   - Saved-state endpoint details: repeated-parameter form; a missing parameter gives 422, not Spring's default 400, through an `ApiExceptionHandler` override; 401 wins over 422; duplicate ids allowed; schema `SavedSense`, operation id `listSavedSenses`.
   - Web: the lookup is never invalidated by save, unsave or auth changes; the saved-state key includes the user id; sign-out removes saved-state queries; a delete on My Words updates the saved-state cache too.
   - Cache-header implementation, cycle 1 (CodexC-GPT5.6Terra): `NotFoundException` currently reaches the shared `ApiExceptionHandler`, which must not make every card 404 publicly cacheable. The proposal now requires `DictionaryController` to handle its own lookup 404 and to return successful lookups via `ResponseEntity`, making the specified 200 and lookup-only 404 headers implementable without changing the shared handler.
+- Proposal revisions, cycle 1 (MuseC-Spark1.3). Each one is a proposal that later agents may challenge:
+  - Section 4 backend tests: `CardApiTest` said only "the renames", but four of its tests read lookup-embedded `saved`/`card_id` (`savingASenseCopiesItIntoACard`, `deleteRemovesTheCardAndSavingAgainRestoresIt`, `aSavedSenseCanBeUnsavedWithTheCardIdFromTheLookup`, `usersOnlySeeAndChangeTheirOwnCards`). Those assertions must move to the new saved-state test like `DictionaryApiTest`'s. `DictionaryApiTest` also needs the renames (field assertions plus its raw `lexemes` insert naming `lang`). An implementer following the old bullets would leave failing assertions behind.
+- Checked and left unchanged, cycle 1 (MuseC-Spark1.3):
+  - The open proposals (cache max-ages, the 100-id limit, signed-out active "+" buttons, language names kept in UI text) are acceptable as specified; no challenge.
+  - `SecurityConfig` needs no change for `GET /api/cards/saved`: the existing `/api/cards/**` matcher already covers it, so 401-before-422 holds as stated.
+  - `ApiExceptionHandlerTest` needs no change: the new 422 paths are covered through the saved-state integration test, matching how the existing 422 cases are tested.
+  - `AudioButton`'s `lang` prop and `en-US` default stay: `lang` is the neutral language concept (not a language name), and deriving the voice from `source_lang` is deferred with the second pair, like proposal 3.7.
+  - Language names in API summaries and code comments ("Look up an English word", "Main Russian translation") stay as descriptive text: F1 bans languages from code structure, and the acceptance criteria ban them only in identifiers, types, columns, JSON fields and file names.
+  - The empty-query 200 keeps the same response shape (root pair present, empty lexemes); the web client's local empty-query short-circuit picks up the fixed pair during implementation.
 
 ## Open questions
 - None yet.
 
 ## Next step
-Phase 1, `contract`. Review [docs/api/proposals/feedback-amendments.md](../../api/proposals/feedback-amendments.md) as described in Goal → Phase 1. The cycle 1 cache-header clarification changed the proposal, so agreement must restart. Either improve it (`in-progress`) or record your agreement under "Contract agreement" (`ready-for-review`).
+Phase 1, `contract`. Review [docs/api/proposals/feedback-amendments.md](../../api/proposals/feedback-amendments.md) as described in Goal → Phase 1. The cycle 1 test-consumer clarification changed the proposal, so agreement must restart. Either improve it (`in-progress`) or record your agreement under "Contract agreement" (`ready-for-review`).
 
 <!-- Phase 2 list, for the reviewer to paste into Next step when switching phase:
 1. Backend: V2 migration, then provider records, entities, DTOs, fake data, the sense id (as agreed), the lookup without user state and with cache headers, and `GET /api/cards/saved`. Tests updated and added. Run `./gradlew check`.
 2. Re-export `docs/api/openapi.json` and run `npm run gen:api`.
 3. Web: neutral names, the split requests, the inactive buttons, retry state and signed-out behaviour, the MSW handlers and fixtures, and tests. Run web lint, typecheck, tests and build.
-4. Docs from proposal section 4.
+4. Docs from proposal section 5.
 5. e2e, if tests exist.
 -->
 
@@ -121,6 +131,7 @@ Phase 1, `contract`. Review [docs/api/proposals/feedback-amendments.md](../../ap
 - 2026-11-18T12:30:00Z ClaudeC-Opus5.5: Cycle 1. Checked the proposal against the code, settled the sense-id/reset question, filled gaps in caching, saved-state validation, the web cache and the consumer list. Proposal changed, so status is in-progress.
 - 2026-11-18T12:24:00Z AgyC-Gemini4Argon: Cycle 1. Verified the revised contract proposal against backend/src, web/src, V1 migration and docs/api/openapi.json. Found nothing left to change in the proposal; recorded agreement under Contract agreement (status ready-for-review).
 - 2026-11-18T12:31:05Z CodexC-GPT5.6Terra: Cycle 1. Checked the proposal against the current controllers, exception handling, persistence/provider model and web consumers. Clarified the controller-local cache response path; proposal changed, so status is in-progress and agreement restarts. Web checks passed; backend checks are blocked by the missing JDK 25 and Docker.
+- 2026-11-18T12:36:02Z MuseC-Spark1.3: Cycle 1. Checked the proposal against the API spec, backend, web and tests. Fixed the section 4 backend-test bullets and the stale phase-2 docs reference in this handoff; proposal changed, so status is in-progress and agreement restarts. Web lint, typecheck, 28 tests and build pass; backend checks remain blocked by the missing JDK 25 and Docker.
 
 ## Outcome
 <!-- Filled in only when archiving. -->

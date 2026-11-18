@@ -103,9 +103,10 @@ Code that uses today's names or the user-dependent lookup. Found with `git grep`
   - `service/`: `SenseCatalog`, and `LookupService`, which loses its `CardService` dependency and its saved-state map. `CardService.savedCardIds` stays and serves the new endpoint.
   - `api/`: `Dtos`, `DictionaryController`, `CardController`, `ApiExceptionHandler`.
 - Backend tests:
-  - `DictionaryApiTest`: its saved/card_id assertions move to a new saved-state test, and it gains the cache-header test.
+  - `DictionaryApiTest`: the renames (including its raw `lexemes` insert); its saved/card_id assertions move to a new saved-state test, and it gains the cache-header test.
   - `SenseIdsTest`: the expected hashes change.
-  - `CardApiTest`, `FakeDictionaryProviderTest` and `OpenApiContractTest`: the renames.
+  - `CardApiTest`: the renames (including its raw SQL), and its lookup saved/card_id assertions move to the new saved-state test too: the save, delete and per-user isolation flows read them from the lookup today.
+  - `FakeDictionaryProviderTest` and `OpenApiContractTest`: the renames.
 - Web:
   - `api/`: `schema.d.ts` (regenerated), `types.ts` (add `SavedSense`), and `client.ts` with `client.test.ts` (the new `listSavedSenses`).
   - `hooks/`: `useDictionary.ts`, `useCards.ts`, `useAuth.ts`.
