@@ -5,8 +5,8 @@ status: ready-for-review
 phase: contract                   # contract | implementation; switched only by the reviewer (see Goal)
 branch: main
 started: 2026-11-18T11:38:37Z
-last_updated: 2026-11-18T12:55:00Z
-last_commit: a92339e
+last_updated: 2026-11-18T13:00:00Z
+last_commit: ea51d07
 agents: [Claude-Opus5.5-Interactive, ClaudeC-Opus5.5, AgyC-Gemini4Argon, CodexC-GPT5.6Terra, MuseC-Spark1.3]
 related_decisions: [intent.md, docs/api/proposals/feedback-amendments.md, backend/intent.md, web/intent.md, docs/plan.md]
 ---
@@ -64,7 +64,7 @@ Implement the agreed proposal exactly.
 - Backend `./gradlew check` and web lint, typecheck, tests and build pass with no warnings. If `e2e/` has tests by then, they pass too.
 
 ## Current state
-Phase 1 (`contract`), cycle 2. After ClaudeC-Opus5.5 added the `HandlerMethodValidationException` override to the saved-state `422` rule in section 2, AgyC-Gemini4Argon verified the updated proposal against the codebase and recorded agreement. The remaining implementers in cycle 2 (CodexC-GPT5.6Terra, MuseC-Spark1.3) should now review the proposal and either challenge/improve it (`in-progress`) or record agreement (`ready-for-review`). Proposals still open to challenge by the implementers:
+Phase 1 (`contract`), cycle 2. After ClaudeC-Opus5.5 added the `HandlerMethodValidationException` override to the saved-state `422` rule in section 2, AgyC-Gemini4Argon and CodexC-GPT5.6Terra verified the updated proposal against the codebase and recorded agreement. The remaining implementer in cycle 2 (MuseC-Spark1.3) should now review the proposal and either challenge/improve it (`in-progress`) or record agreement (`ready-for-review`). Proposals still open to challenge by the implementers:
 - the cache max-age values (2)
 - the 100-id limit (2)
 - signed-out buttons (3.6)
@@ -75,6 +75,7 @@ Phase 1 (`contract`), cycle 2. After ClaudeC-Opus5.5 added the `HandlerMethodVal
 <!-- Phase 1 only. One line per implementer per cycle: "- <agent>, cycle <n>: agree (<remarks>)". A proposal change after a line makes earlier lines stale; agreement then starts over. -->
 - AgyC-Gemini4Argon, cycle 1: agree (checked against `backend/src`, `web/src`, `V1__create_users_lexemes_senses_cards.sql` and `docs/api/openapi.json`; all cycle 1 revisions and open proposals — cache TTLs, 100-id cap, signed-out active "+" buttons, and keeping language names in UI copy — are complete and consistent with F1–F3)
 - AgyC-Gemini4Argon, cycle 2: agree (verified the cycle 1 and cycle 2 revisions — controller-local lookup 200/404 cache headers, updated backend-test consumer list, and `HandlerMethodValidationException` override in `ApiExceptionHandler` for `@Size(min = 1, max = 100) List<@NotBlank String>` — against `DictionaryController`, `CardController`, `ApiExceptionHandler`, `CardApiTest`, `DictionaryApiTest` and `web/src`)
+- CodexC-GPT5.6Terra, cycle 2: agree (verified the lookup response/cache path, saved-state validation and authorization ordering, persistence migration plan, generated-client boundary, and web query/cache behavior against the current source; web lint, typecheck, 28 tests and build pass)
 
 ## Done
 - Draft contract written: `docs/api/proposals/feedback-amendments.md`.
@@ -84,6 +85,8 @@ Phase 1 (`contract`), cycle 2. After ClaudeC-Opus5.5 added the `HandlerMethodVal
 - Cycle 1, MuseC-Spark1.3: verified the proposal against `docs/api/openapi.json`, `backend/src` (main + tests), `web/src` (api, hooks, views, mocks, tests) and the e2e placeholder. Fixed the section 4 backend-test bullets. Everything else held up.
 - Cycle 2, ClaudeC-Opus5.5: re-checked section 2 against `ApiExceptionHandler`, `SecurityConfig`, `SessionTokenFilter`, `CardService.savedCardIds` and `SenseIds`, and section 3 against `useDictionary`, `useCards` and `useAuth`. Added the `HandlerMethodValidationException` override to the saved-state 422 rule.
 - Cycle 2, AgyC-Gemini4Argon: verified the cycle 1 and cycle 2 revisions (controller-local lookup 200/404 cache headers, backend test consumer updates, and `HandlerMethodValidationException` override for saved-state parameter validation) against `backend/src`, `web/src` and `docs/api/openapi.json`, and recorded agreement.
+
+- Cycle 2, CodexC-GPT5.6Terra: verified the proposal's lookup/cache, saved-state, language-neutral migration and web-client clauses against the current source, found no change needed, and recorded agreement. Web lint, typecheck, 28 tests and build pass.
 
 ## Tried and rejected
 - Filtering `GET /api/cards` by `sense_id` for saved state. Rejected by Alex, who prefers two separate endpoints.
@@ -144,6 +147,8 @@ Phase 1, `contract`. Review [docs/api/proposals/feedback-amendments.md](../../ap
 - 2026-11-18T12:36:02Z MuseC-Spark1.3: Cycle 1. Checked the proposal against the API spec, backend, web and tests. Fixed the section 4 backend-test bullets and the stale phase-2 docs reference in this handoff; proposal changed, so status is in-progress and agreement restarts. Web lint, typecheck, 28 tests and build pass; backend checks remain blocked by the missing JDK 25 and Docker.
 - 2026-11-18T12:52:00Z ClaudeC-Opus5.5: Cycle 2. Re-checked the proposal against the backend validation, security and token paths and the web hooks. Added the `HandlerMethodValidationException` override so the saved-state limit and blank-id cases are 422 too; proposal changed, so status is in-progress and agreement restarts. Web checks and backend `./gradlew check` (portable toolchain) pass.
 - 2026-11-18T12:55:00Z AgyC-Gemini4Argon: Cycle 2. Verified the cycle 1 and cycle 2 proposal revisions (lookup-local cache headers, backend test consumers, and HandlerMethodValidationException override in ApiExceptionHandler) against backend/src, web/src and docs/api/openapi.json. Found nothing left to change in the proposal; recorded agreement under Contract agreement (status ready-for-review). Backend ./gradlew check and web lint, typecheck, 28 tests and build pass.
+
+- 2026-11-18T13:00:00Z CodexC-GPT5.6Terra: Cycle 2. Verified the proposal against the current endpoint, validation, security, persistence, generated-client and web-query paths. Found nothing left to change; recorded agreement under Contract agreement (status ready-for-review). Web lint, typecheck, 28 tests and build pass.
 
 ## Outcome
 <!-- Filled in only when archiving. -->
