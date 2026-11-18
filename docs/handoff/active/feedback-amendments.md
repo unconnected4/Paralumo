@@ -5,8 +5,8 @@ status: ready-for-review
 phase: contract                   # contract | implementation; switched only by the reviewer (see Goal)
 branch: main
 started: 2026-11-18T11:38:37Z
-last_updated: 2026-11-18T13:06:00Z
-last_commit: 7f37396
+last_updated: 2026-11-18T13:15:00Z
+last_commit: 7759319
 agents: [Claude-Opus5.5-Interactive, ClaudeC-Opus5.5, AgyC-Gemini4Argon, CodexC-GPT5.6Terra, MuseC-Spark1.3]
 related_decisions: [intent.md, docs/api/proposals/feedback-amendments.md, backend/intent.md, web/intent.md, docs/plan.md]
 ---
@@ -64,12 +64,7 @@ Implement the agreed proposal exactly.
 - Backend `./gradlew check` and web lint, typecheck, tests and build pass with no warnings. If `e2e/` has tests by then, they pass too.
 
 ## Current state
-Phase 1 (`contract`), cycle 2. After ClaudeC-Opus5.5 added the `HandlerMethodValidationException` override to the saved-state `422` rule in section 2, AgyC-Gemini4Argon, CodexC-GPT5.6Terra and MuseC-Spark1.3 verified the updated proposal against the codebase and recorded agreement. The remaining implementer in cycle 2 (ClaudeC-Opus5.5, who authored the last change and has not recorded agreement since) should now review the proposal and either challenge/improve it (`in-progress`) or record agreement (`ready-for-review`). Proposals still open to challenge by the implementers:
-- the cache max-age values (2)
-- the 100-id limit (2)
-- signed-out buttons (3.6)
-- language names in UI text (3.7)
-- the revisions made in cycle 1 and cycle 2 (Decisions)
+Phase 1 (`contract`), cycle 2 complete. After ClaudeC-Opus5.5 added the `HandlerMethodValidationException` override to the saved-state `422` rule in section 2, all four implementers (AgyC-Gemini4Argon, CodexC-GPT5.6Terra, MuseC-Spark1.3, then ClaudeC-Opus5.5) verified the proposal and recorded agreement with no proposal change in between. Waiting for the reviewer to confirm and switch to phase 2.
 
 ## Contract agreement
 <!-- Phase 1 only. One line per implementer per cycle: "- <agent>, cycle <n>: agree (<remarks>)". A proposal change after a line makes earlier lines stale; agreement then starts over. -->
@@ -77,6 +72,7 @@ Phase 1 (`contract`), cycle 2. After ClaudeC-Opus5.5 added the `HandlerMethodVal
 - AgyC-Gemini4Argon, cycle 2: agree (verified the cycle 1 and cycle 2 revisions — controller-local lookup 200/404 cache headers, updated backend-test consumer list, and `HandlerMethodValidationException` override in `ApiExceptionHandler` for `@Size(min = 1, max = 100) List<@NotBlank String>` — against `DictionaryController`, `CardController`, `ApiExceptionHandler`, `CardApiTest`, `DictionaryApiTest` and `web/src`)
 - CodexC-GPT5.6Terra, cycle 2: agree (verified the lookup response/cache path, saved-state validation and authorization ordering, persistence migration plan, generated-client boundary, and web query/cache behavior against the current source; web lint, typecheck, 28 tests and build pass)
 - MuseC-Spark1.3, cycle 2: agree (verified the 422 override pair against the spring-webmvc-7.0.10 sources, the cache-header override against the spring-security-web-7.1.2 sources, and the section 4 consumer list against `git grep` over `backend/src`, `web/src` and `docs/api/openapi.json`; web lint, typecheck, 28 tests and build pass)
+- ClaudeC-Opus5.5, cycle 2: agree (re-read the whole proposal against `V1__create_users_lexemes_senses_cards.sql`, `DictionaryController`, `CardController` and `useCards`; also checked that `GET /api/cards/saved` doesn't clash with `DELETE /api/cards/{cardId}`, since that route is DELETE-only and a `saved` card id would be an unknown card (404). Agree with MuseC-Spark1.3 that `@Validated` on `CardController` is mechanism, not contract. Web lint, typecheck, 28 tests and build pass)
 
 ## Done
 - Draft contract written: `docs/api/proposals/feedback-amendments.md`.
@@ -89,6 +85,7 @@ Phase 1 (`contract`), cycle 2. After ClaudeC-Opus5.5 added the `HandlerMethodVal
 
 - Cycle 2, CodexC-GPT5.6Terra: verified the proposal's lookup/cache, saved-state, language-neutral migration and web-client clauses against the current source, found no change needed, and recorded agreement. Web lint, typecheck, 28 tests and build pass.
 - Cycle 2, MuseC-Spark1.3: verified the proposal against the framework sources in the Gradle cache, `backend/src`, `web/src` and `docs/api/openapi.json`, found no change needed, and recorded agreement. Web lint, typecheck, 28 tests and build pass; backend `./gradlew check` not re-run (handoff-only change; no `docker` or `JAVA_HOME` in this session).
+- Cycle 2, ClaudeC-Opus5.5: re-checked the proposal against the schema, controllers and web hooks, found no change needed, and recorded agreement. That completes the cycle 2 streak.
 
 ## Tried and rejected
 - Filtering `GET /api/cards` by `sense_id` for saved state. Rejected by Alex, who prefers two separate endpoints.
@@ -137,7 +134,7 @@ Phase 1 (`contract`), cycle 2. After ClaudeC-Opus5.5 added the `HandlerMethodVal
 - None yet.
 
 ## Next step
-Phase 1, `contract`. Review [docs/api/proposals/feedback-amendments.md](../../api/proposals/feedback-amendments.md) as described in Goal → Phase 1. Either improve it (`in-progress`) or record your agreement under "Contract agreement" (`ready-for-review`).
+Reviewer: phase 1 end check, as described in Goal → "Reviewer at the end of phase 1". Every implementer has agreed in cycle 2 with no proposal change in between.
 
 <!-- Phase 2 list, for the reviewer to paste into Next step when switching phase:
 1. Backend: V2 migration, then provider records, entities, DTOs, fake data, the sense id (as agreed), the lookup without user state and with cache headers, and `GET /api/cards/saved`. Tests updated and added. Run `./gradlew check`.
@@ -159,6 +156,7 @@ Phase 1, `contract`. Review [docs/api/proposals/feedback-amendments.md](../../ap
 
 - 2026-11-18T13:00:00Z CodexC-GPT5.6Terra: Cycle 2. Verified the proposal against the current endpoint, validation, security, persistence, generated-client and web-query paths. Found nothing left to change; recorded agreement under Contract agreement (status ready-for-review). Web lint, typecheck, 28 tests and build pass.
 - 2026-11-18T13:06:00Z MuseC-Spark1.3: Cycle 2. Verified the 422 overrides and cache-header override against the framework sources and the consumer list against git grep. Found nothing left to change; recorded agreement under Contract agreement (status ready-for-review). Web lint, typecheck, 28 tests and build pass.
+- 2026-11-18T13:15:00Z ClaudeC-Opus5.5: Cycle 2. Re-checked the proposal against the schema, controllers and web hooks. Found nothing left to change; recorded agreement, completing the streak (status ready-for-review). Web lint, typecheck, 28 tests and build pass; backend check not re-run (handoff-only change).
 
 ## Outcome
 <!-- Filled in only when archiving. -->
