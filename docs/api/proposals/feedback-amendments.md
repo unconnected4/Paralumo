@@ -73,7 +73,10 @@ The V2 migration itself resets existing local data. Before the renames, it delet
 - Signed-in only: `401 {detail}` when signed out.
 - Returns which of the given senses the current user has saved: `200 [{sense_id, card_id}]`, one entry per saved sense, only active (not deleted) cards, and only the current user's. Senses that aren't saved are left out. An unknown sense id isn't an error: it's simply not saved.
 - At least 1 and at most 100 `sense_id` values, sent as a repeated query parameter (OpenAPI `style: form, explode: true`, which the generated web client sends by default). A lookup returns far fewer senses than 100.
-- `422 {detail}` when there is no `sense_id`, more than 100, or a blank one. By default Spring answers a missing required parameter with `400` (`MissingServletRequestParameterException`), so `ApiExceptionHandler` overrides that to `422`, as it already does for invalid bodies. When the user is signed out, `401` wins over `422`, because security runs before the controller.
+- `422 {detail}` when there is no `sense_id`, more than 100, or a blank one. By default Spring answers all three with `400`, so `ApiExceptionHandler` overrides both sources to `422`, as it already does for invalid bodies:
+  - a missing required parameter raises `MissingServletRequestParameterException`;
+  - the limit and the blank check, written as constraints on the parameter (`@Size(min = 1, max = 100) List<@NotBlank String>`), go through Spring's built-in method validation and raise `HandlerMethodValidationException`.
+  When the user is signed out, `401` wins over `422`, because security runs before the controller.
 - Duplicate ids are allowed and count towards the limit as sent. The response has at most one entry per sense, and the order of its entries has no meaning.
 - Schema name `SavedSense` (`{sense_id, card_id}`, both required). Operation id `listSavedSenses`.
 - Never cached: `Cache-Control: private, no-store`.

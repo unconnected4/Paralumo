@@ -5,8 +5,8 @@ status: in-progress
 phase: contract                   # contract | implementation; switched only by the reviewer (see Goal)
 branch: main
 started: 2026-11-18T11:38:37Z
-last_updated: 2026-11-18T12:36:02Z
-last_commit: 4f2db63
+last_updated: 2026-11-18T12:52:00Z
+last_commit: 8e9a070
 agents: [Claude-Opus5.5-Interactive, ClaudeC-Opus5.5, AgyC-Gemini4Argon, CodexC-GPT5.6Terra, MuseC-Spark1.3]
 related_decisions: [intent.md, docs/api/proposals/feedback-amendments.md, backend/intent.md, web/intent.md, docs/plan.md]
 ---
@@ -64,7 +64,7 @@ Implement the agreed proposal exactly.
 - Backend `./gradlew check` and web lint, typecheck, tests and build pass with no warnings. If `e2e/` has tests by then, they pass too.
 
 ## Current state
-Phase 1 (`contract`), cycle 1. MuseC-Spark1.3 checked the proposal against the current API, backend, web and test consumers and fixed the backend-test consumer list (section 4): `CardApiTest` also asserts lookup-embedded saved/card_id, and `DictionaryApiTest` also needs the renames. The proposal changed, so the agreement streak restarts. Proposals still open to challenge by the implementers:
+Phase 1 (`contract`), cycle 2. ClaudeC-Opus5.5 re-checked the proposal against the backend validation path and found that only the missing-parameter case of the saved-state `422` was covered; the "more than 100" and "blank id" cases raise a different Spring exception that also defaults to `400`. Section 2 now names both overrides. The proposal changed, so the agreement streak restarts (the AgyC-Gemini4Argon line under Contract agreement is stale). Proposals still open to challenge by the implementers:
 - the cache max-age values (2)
 - the 100-id limit (2)
 - signed-out buttons (3.6)
@@ -81,6 +81,7 @@ Phase 1 (`contract`), cycle 1. MuseC-Spark1.3 checked the proposal against the c
 - Cycle 1, AgyC-Gemini4Argon: verified the revised contract against `backend/src`, `web/src` and `docs/api/openapi.json`, and recorded agreement.
 - Cycle 1, CodexC-GPT5.6Terra: verified the proposal against the current controllers, shared exception handler, security configuration, provider/persistence model, generated client, hooks, views and MSW handlers. Clarified the lookup-local cache-header path for both successful and 404 responses.
 - Cycle 1, MuseC-Spark1.3: verified the proposal against `docs/api/openapi.json`, `backend/src` (main + tests), `web/src` (api, hooks, views, mocks, tests) and the e2e placeholder. Fixed the section 4 backend-test bullets. Everything else held up.
+- Cycle 2, ClaudeC-Opus5.5: re-checked section 2 against `ApiExceptionHandler`, `SecurityConfig`, `SessionTokenFilter`, `CardService.savedCardIds` and `SenseIds`, and section 3 against `useDictionary`, `useCards` and `useAuth`. Added the `HandlerMethodValidationException` override to the saved-state 422 rule.
 
 ## Tried and rejected
 - Filtering `GET /api/cards` by `sense_id` for saved state. Rejected by Alex, who prefers two separate endpoints.
@@ -89,6 +90,7 @@ Phase 1 (`contract`), cycle 1. MuseC-Spark1.3 checked the proposal against the c
 - `ExampleSentence.source` as the new name for `en` (draft). Replaced by `text`, because `source` already names the provider (`senses.source`, `DictionaryProvider.source()`).
 - Backend `./gradlew.bat check` in this session. Blocked before compilation because this machine has no JDK 25 toolchain; Docker is also unavailable on `PATH`, so its required integration-test infrastructure cannot be started. This is environment setup, not a contract defect.
 - Web `npm run lint`, `npm run typecheck`, `npm test -- --run`, and `npm run build`. All commands exited 0; the production build completed without warnings.
+  - Note, cycle 2 (ClaudeC-Opus5.5): on this machine the backend check does run with the portable JDK 25 and PostgreSQL 16 in the git-ignored `AgentsOutput/ClaudeC-Opus5.5/` (start Postgres with its `pg_ctl`, set `JAVA_HOME`). `./gradlew check` passed there this cycle.
 
 ## Decisions made during this task
 - Two phases in one task, switched by the reviewer (by Alex, see Goal). It's one task rather than two so the implementation starts automatically once the reviewer approves, using the driver's existing reviewer `in-progress` route. The driver's note to that cycle will say "the reviewer recorded findings". At the switch, read Next step and `phase` instead.
@@ -103,6 +105,12 @@ Phase 1 (`contract`), cycle 1. MuseC-Spark1.3 checked the proposal against the c
   - Cache-header implementation, cycle 1 (CodexC-GPT5.6Terra): `NotFoundException` currently reaches the shared `ApiExceptionHandler`, which must not make every card 404 publicly cacheable. The proposal now requires `DictionaryController` to handle its own lookup 404 and to return successful lookups via `ResponseEntity`, making the specified 200 and lookup-only 404 headers implementable without changing the shared handler.
 - Proposal revisions, cycle 1 (MuseC-Spark1.3). Each one is a proposal that later agents may challenge:
   - Section 4 backend tests: `CardApiTest` said only "the renames", but four of its tests read lookup-embedded `saved`/`card_id` (`savingASenseCopiesItIntoACard`, `deleteRemovesTheCardAndSavingAgainRestoresIt`, `aSavedSenseCanBeUnsavedWithTheCardIdFromTheLookup`, `usersOnlySeeAndChangeTheirOwnCards`). Those assertions must move to the new saved-state test like `DictionaryApiTest`'s. `DictionaryApiTest` also needs the renames (field assertions plus its raw `lexemes` insert naming `lang`). An implementer following the old bullets would leave failing assertions behind.
+- Proposal revision, cycle 2 (ClaudeC-Opus5.5), open to challenge:
+  - Saved-state 422: the proposal overrode only `MissingServletRequestParameterException`. The 100-id limit and the blank-id check, written as parameter constraints, run through Spring's built-in method validation and raise `HandlerMethodValidationException`, which `ResponseEntityExceptionHandler` also answers with `400`. Section 2 now requires overriding both to `422`. No other endpoint has parameter constraints today (bodies use `@Valid` and `MethodArgumentNotValidException`), so the global override changes nothing else.
+- Checked and left unchanged, cycle 2 (ClaudeC-Opus5.5):
+  - "Same response with a valid, expired or forged token" holds: `SessionTokenFilter` leaves an invalid token anonymous and never writes a cookie, and only `/api/cards/**` requires authentication.
+  - Sense ids are `s_` + hex, so Spring's comma splitting of a `List<String>` parameter can't break an id.
+  - The web invalidations the proposal removes (`['dictionary']` in `useCards` and in all three `useAuth` mutations) match the code.
 - Checked and left unchanged, cycle 1 (MuseC-Spark1.3):
   - The open proposals (cache max-ages, the 100-id limit, signed-out active "+" buttons, language names kept in UI text) are acceptable as specified; no challenge.
   - `SecurityConfig` needs no change for `GET /api/cards/saved`: the existing `/api/cards/**` matcher already covers it, so 401-before-422 holds as stated.
@@ -115,7 +123,7 @@ Phase 1 (`contract`), cycle 1. MuseC-Spark1.3 checked the proposal against the c
 - None yet.
 
 ## Next step
-Phase 1, `contract`. Review [docs/api/proposals/feedback-amendments.md](../../api/proposals/feedback-amendments.md) as described in Goal → Phase 1. The cycle 1 test-consumer clarification changed the proposal, so agreement must restart. Either improve it (`in-progress`) or record your agreement under "Contract agreement" (`ready-for-review`).
+Phase 1, `contract`. Review [docs/api/proposals/feedback-amendments.md](../../api/proposals/feedback-amendments.md) as described in Goal → Phase 1. The cycle 2 saved-state 422 clarification (section 2) changed the proposal, so agreement must restart. Either improve it (`in-progress`) or record your agreement under "Contract agreement" (`ready-for-review`).
 
 <!-- Phase 2 list, for the reviewer to paste into Next step when switching phase:
 1. Backend: V2 migration, then provider records, entities, DTOs, fake data, the sense id (as agreed), the lookup without user state and with cache headers, and `GET /api/cards/saved`. Tests updated and added. Run `./gradlew check`.
@@ -132,6 +140,7 @@ Phase 1, `contract`. Review [docs/api/proposals/feedback-amendments.md](../../ap
 - 2026-11-18T12:24:00Z AgyC-Gemini4Argon: Cycle 1. Verified the revised contract proposal against backend/src, web/src, V1 migration and docs/api/openapi.json. Found nothing left to change in the proposal; recorded agreement under Contract agreement (status ready-for-review).
 - 2026-11-18T12:31:05Z CodexC-GPT5.6Terra: Cycle 1. Checked the proposal against the current controllers, exception handling, persistence/provider model and web consumers. Clarified the controller-local cache response path; proposal changed, so status is in-progress and agreement restarts. Web checks passed; backend checks are blocked by the missing JDK 25 and Docker.
 - 2026-11-18T12:36:02Z MuseC-Spark1.3: Cycle 1. Checked the proposal against the API spec, backend, web and tests. Fixed the section 4 backend-test bullets and the stale phase-2 docs reference in this handoff; proposal changed, so status is in-progress and agreement restarts. Web lint, typecheck, 28 tests and build pass; backend checks remain blocked by the missing JDK 25 and Docker.
+- 2026-11-18T12:52:00Z ClaudeC-Opus5.5: Cycle 2. Re-checked the proposal against the backend validation, security and token paths and the web hooks. Added the `HandlerMethodValidationException` override so the saved-state limit and blank-id cases are 422 too; proposal changed, so status is in-progress and agreement restarts. Web checks and backend `./gradlew check` (portable toolchain) pass.
 
 ## Outcome
 <!-- Filled in only when archiving. -->
