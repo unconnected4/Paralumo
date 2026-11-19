@@ -1,13 +1,13 @@
 ---
 task: feedback-amendments
 title: Apply Alex's feedback F1–F3 - agree the contract first, then implement it
-status: ready-for-review
-phase: contract                   # contract | implementation; switched only by the reviewer (see Goal)
+status: in-progress
+phase: implementation             # contract | implementation; switched only by the reviewer (see Goal)
 branch: main
 started: 2026-11-18T11:38:37Z
-last_updated: 2026-11-18T13:15:00Z
-last_commit: 7759319
-agents: [Claude-Opus5.5-Interactive, ClaudeC-Opus5.5, AgyC-Gemini4Argon, CodexC-GPT5.6Terra, MuseC-Spark1.3]
+last_updated: 2026-11-19T11:00:00Z
+last_commit: 3e4e000
+agents: [Claude-Opus5.5-Interactive, ClaudeC-Opus5.5, AgyC-Gemini4Argon, CodexC-GPT5.6Terra, MuseC-Spark1.3, ClaudeC-Fable]
 related_decisions: [intent.md, docs/api/proposals/feedback-amendments.md, backend/intent.md, web/intent.md, docs/plan.md]
 ---
 
@@ -64,7 +64,7 @@ Implement the agreed proposal exactly.
 - Backend `./gradlew check` and web lint, typecheck, tests and build pass with no warnings. If `e2e/` has tests by then, they pass too.
 
 ## Current state
-Phase 1 (`contract`), cycle 2 complete. After ClaudeC-Opus5.5 added the `HandlerMethodValidationException` override to the saved-state `422` rule in section 2, all four implementers (AgyC-Gemini4Argon, CodexC-GPT5.6Terra, MuseC-Spark1.3, then ClaudeC-Opus5.5) verified the proposal and recorded agreement with no proposal change in between. Waiting for the reviewer to confirm and switch to phase 2.
+Phase 2 (`implementation`) starts. The reviewer (ClaudeC-Fable) confirmed the contract at the end of phase 1 cycle 2: the proposal's Status is now `agreed`, and it changes only with a reason recorded here. The reviewer added four clarifications to the proposal (Decisions below); none changes the agreed behaviour. Nothing in `backend/`, `web/`, `e2e/` or `docs/api/openapi.json` has changed yet. Implementers: work through Next step in order.
 
 ## Contract agreement
 <!-- Phase 1 only. One line per implementer per cycle: "- <agent>, cycle <n>: agree (<remarks>)". A proposal change after a line makes earlier lines stale; agreement then starts over. -->
@@ -86,6 +86,7 @@ Phase 1 (`contract`), cycle 2 complete. After ClaudeC-Opus5.5 added the `Handler
 - Cycle 2, CodexC-GPT5.6Terra: verified the proposal's lookup/cache, saved-state, language-neutral migration and web-client clauses against the current source, found no change needed, and recorded agreement. Web lint, typecheck, 28 tests and build pass.
 - Cycle 2, MuseC-Spark1.3: verified the proposal against the framework sources in the Gradle cache, `backend/src`, `web/src` and `docs/api/openapi.json`, found no change needed, and recorded agreement. Web lint, typecheck, 28 tests and build pass; backend `./gradlew check` not re-run (handoff-only change; no `docker` or `JAVA_HOME` in this session).
 - Cycle 2, ClaudeC-Opus5.5: re-checked the proposal against the schema, controllers and web hooks, found no change needed, and recorded agreement. That completes the cycle 2 streak.
+- Phase 1 review, ClaudeC-Fable: checked the proposal against F1–F3 as Alex stated them (archived `alex-feedback` handoff), `intent.md`, `backend/AGENTS.md`, `web/AGENTS.md`, `docs/engineering.md`, the backend API/service/persistence/provider/security code and tests, the web client, hooks, pages, mocks and tests, and the Spring 7.0.10 sources. Found it complete, consistent and implementable. Added four clarifications to the proposal (no behaviour change; Decisions below), marked it `agreed`, and switched the task to phase 2. Web lint, typecheck, 28 tests and build pass; backend `./gradlew check --rerun-tasks` passes with the portable toolchain (see Tried and rejected for the Postgres restart).
 
 ## Tried and rejected
 - Filtering `GET /api/cards` by `sense_id` for saved state. Rejected by Alex, who prefers two separate endpoints.
@@ -95,6 +96,7 @@ Phase 1 (`contract`), cycle 2 complete. After ClaudeC-Opus5.5 added the `Handler
 - Backend `./gradlew.bat check` in this session. Blocked before compilation because this machine has no JDK 25 toolchain; Docker is also unavailable on `PATH`, so its required integration-test infrastructure cannot be started. This is environment setup, not a contract defect.
 - Web `npm run lint`, `npm run typecheck`, `npm test -- --run`, and `npm run build`. All commands exited 0; the production build completed without warnings.
   - Note, cycle 2 (ClaudeC-Opus5.5): on this machine the backend check does run with the portable JDK 25 and PostgreSQL 16 in the git-ignored `AgentsOutput/ClaudeC-Opus5.5/` (start Postgres with its `pg_ctl`, set `JAVA_HOME`). `./gradlew check` passed there this cycle.
+  - Note, phase 1 review (ClaudeC-Fable): a Postgres started by an earlier session can die when a later session's tests make it fork (`pg.log`: child processes terminated with exception `0xC0000142`, then "database system is shut down"), and every integration test then fails with "Connection reset" from Flyway. Check `pg_isready` before the backend check and restart Postgres with `pg_ctl ... -w start` from your own session if needed. Also, a plain `./gradlew check` reports `UP-TO-DATE` when nothing changed; use `--rerun-tasks` to actually re-run the tests.
 
 ## Decisions made during this task
 - Two phases in one task, switched by the reviewer (by Alex, see Goal). It's one task rather than two so the implementation starts automatically once the reviewer approves, using the driver's existing reviewer `in-progress` route. The driver's note to that cycle will say "the reviewer recorded findings". At the switch, read Next step and `phase` instead.
@@ -130,19 +132,28 @@ Phase 1 (`contract`), cycle 2 complete. After ClaudeC-Opus5.5 added the `Handler
   - No `src/test/resources/fixtures/` directory exists yet (the backend `AGENTS.md` layout mentions it), so section 4 correctly lists no fixture updates. The only grep hit under `src/test/resources` is the unrelated `env: test` line in `application-integration.yaml`.
   - Section 4 completeness re-checked with `git grep` for `translation_ru|synonyms_ru|meanings_en` and the camelCase variants plus `saved|card_id`: every hit is either listed (backend controllers, `Dtos`, entities, `FakeDictionaryProvider`, `ProviderSense`, `SenseIds`, `SenseCatalog`, fake-data JSON, `CardApiTest`, `DictionaryApiTest`, `FakeDictionaryProviderTest`, web views, `SenseCard`, mocks, `schema.d.ts`, `client.test.ts`, `App.test.tsx`) or correctly unlisted (`V1__...sql`, never edited; `LexemeEntity`/`LexemeRepository`/`LANG_EN` found via the `lang` grep and listed; `MaxUtf8Bytes` matches only `java.lang`).
 
+- Phase 1 review, ClaudeC-Fable (2026-11-18). Clarifications added to the agreed proposal; each is a consequence of what was already agreed, not a new behaviour, which is why they didn't restart the agreement round:
+  - **No `@Validated` on `CardController`.** This corrects the cycle 2 MuseC-Spark1.3 note above ("The parameter constraints need `@Validated` on `CardController` to trigger method validation at all"). Spring's built-in method validation runs whenever a handler parameter carries a constraint, and it runs *only* when the controller class has no `@Validated`: `HandlerMethod.checkArguments` (spring-web 7.0.10) returns false as soon as `findAnnotation(beanType, Validated.class)` is non-null. A class-level `@Validated` switches the controller to the AOP `MethodValidationInterceptor`, whose `ConstraintViolationException` is not handled by `ResponseEntityExceptionHandler` and would fall through to the 500 handler. The saved-state 422 tests would catch it, but the note would have sent an implementer the wrong way first. Proposal section 2 now says so.
+  - **Saved-state endpoint cache header:** the draft's `Cache-Control: private, no-store` is replaced by the Spring Security default that every other card endpoint already carries (`no-cache, no-store, max-age=0, must-revalidate`). "Never cached" was the requirement; the exact value was never checked by a test, and a bespoke header on one endpoint would only invite questions.
+  - **V2 is a one-off exception to the backward-compatible-migrations rule** in `backend/AGENTS.md`: an in-place rename plus a data reset can't keep the previous release running. Nothing is deployed, so no previous release exists, and the sense-id change makes compatibility moot regardless. The proposal now says so and asks for the exception to be recorded in `backend/intent.md` with the other section 5 doc updates, so the rule stays intact for V3 onwards.
+  - **`CardApiTest` raw SQL:** its `INSERT INTO user_cards` must also supply `source_lang` and `target_lang`, which V2 adds as `NOT NULL` without a default. Section 4 said only "the renames"; the test would fail loudly, but the bullet now says what to do.
+- Checked and left unchanged, phase 1 review (ClaudeC-Fable):
+  - A controller-local `@ExceptionHandler(NotFoundException.class)` in `DictionaryController` takes precedence over the `@RestControllerAdvice`, so the lookup-only cacheable 404 is implementable exactly as section 2 says, with the shared handler untouched.
+  - openapi-fetch serialises array query parameters as `form`/`explode: true` by default, so `GET /api/cards/saved?sense_id=a&sense_id=b` needs no custom `querySerializer` in `client.ts`.
+  - `GET /api/cards/saved` is covered by the existing `/api/cards/**` matcher (401 before 422) and can't collide with `DELETE /api/cards/{cardId}`.
+  - The web's "retry state" (section 3.4) is a short inline message with a way to retry the saved-state request while the lookup stays visible; the exact wording and control are the implementer's choice.
+  - `e2e/` holds only a README, so section 5's "if one exists by then" applies: no e2e work in this task unless `e2e-smoke` lands first.
+
 ## Open questions
-- None yet.
+- None. No `For Alex:` question was open at the phase 1 review.
 
 ## Next step
-Reviewer: phase 1 end check, as described in Goal → "Reviewer at the end of phase 1". Every implementer has agreed in cycle 2 with no proposal change in between.
-
-<!-- Phase 2 list, for the reviewer to paste into Next step when switching phase:
-1. Backend: V2 migration, then provider records, entities, DTOs, fake data, the sense id (as agreed), the lookup without user state and with cache headers, and `GET /api/cards/saved`. Tests updated and added. Run `./gradlew check`.
-2. Re-export `docs/api/openapi.json` and run `npm run gen:api`.
-3. Web: neutral names, the split requests, the inactive buttons, retry state and signed-out behaviour, the MSW handlers and fixtures, and tests. Run web lint, typecheck, tests and build.
-4. Docs from proposal section 5.
-5. e2e, if tests exist.
--->
+Phase 2: implement the agreed proposal (`docs/api/proposals/feedback-amendments.md`) exactly. Work in this order; each item is done when its checks pass, and the task is done when every acceptance criterion in Goal holds.
+1. Backend: V2 migration, then provider records, entities, DTOs, fake data, the sense id (as agreed), the lookup without user state and with cache headers, and `GET /api/cards/saved`. Tests updated and added (section 4). Run `./gradlew check` (with `--rerun-tasks` when nothing else changed). Notes from the reviewer: no `@Validated` on `CardController` (section 2); the saved-state endpoint sets no cache header of its own; `CardApiTest`'s raw insert needs the two new language columns.
+2. Re-export `docs/api/openapi.json` (`./gradlew exportOpenApi`) and run `npm run gen:api` in `web/`, in the same commit as the backend contract change where possible (root `AGENTS.md`: spec and web client change together).
+3. Web: neutral names, the split requests, the inactive buttons, retry state and signed-out behaviour, the MSW handlers and fixtures, and the tests the acceptance criteria name. Run web lint, typecheck, tests and build.
+4. Docs from proposal section 5, including the V2 backward-compatibility exception in `backend/intent.md`.
+5. e2e: nothing to do unless `e2e/` has tests by then.
 
 ## Session log
 <!-- Append one line per session. Never rewrite earlier lines. -->
@@ -157,6 +168,8 @@ Reviewer: phase 1 end check, as described in Goal → "Reviewer at the end of ph
 - 2026-11-18T13:00:00Z CodexC-GPT5.6Terra: Cycle 2. Verified the proposal against the current endpoint, validation, security, persistence, generated-client and web-query paths. Found nothing left to change; recorded agreement under Contract agreement (status ready-for-review). Web lint, typecheck, 28 tests and build pass.
 - 2026-11-18T13:06:00Z MuseC-Spark1.3: Cycle 2. Verified the 422 overrides and cache-header override against the framework sources and the consumer list against git grep. Found nothing left to change; recorded agreement under Contract agreement (status ready-for-review). Web lint, typecheck, 28 tests and build pass.
 - 2026-11-18T13:15:00Z ClaudeC-Opus5.5: Cycle 2. Re-checked the proposal against the schema, controllers and web hooks. Found nothing left to change; recorded agreement, completing the streak (status ready-for-review). Web lint, typecheck, 28 tests and build pass; backend check not re-run (handoff-only change).
+- 2026-11-18T13:30:00Z ClaudeC-Fable: Phase 1 review. Confirmed the contract against F1–F3, the instructions, the code and the Spring sources; added four clarifications (no `@Validated`, default cache header on the saved-state endpoint, V2 backward-compatibility exception, `CardApiTest` raw SQL), marked the proposal agreed, and switched to phase 2 with the implementation list in Next step (status in-progress). Web checks and backend `./gradlew check --rerun-tasks` pass.
+- 2026-11-19T11:00:00Z ClaudeC-Fable: Finished the phase 1 review, which the previous session wrote but left uncommitted. Re-read the review edits against the proposal, re-verified the `@Validated` claim in `HandlerMethod.checkArguments` (spring-web 7.0.10 sources), and re-ran the checks: web lint, typecheck, 28 tests and build pass; backend `./gradlew check --rerun-tasks` passes (the portable Postgres was down again and needed `pg_ctl ... -w start`). No change to the review's content; committed it (status in-progress, phase implementation).
 
 ## Outcome
 <!-- Filled in only when archiving. -->

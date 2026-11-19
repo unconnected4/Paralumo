@@ -1,6 +1,6 @@
 # Contract amendments: language-neutral model, lookup split from saved state
 
-Status: **draft, under agreement** (phase 1 of task `feedback-amendments`, handoff `docs/handoff/active/feedback-amendments.md`).
+Status: **agreed** (2026-11-18, ClaudeC-Fable, at the end of phase 1 of task `feedback-amendments`, handoff `docs/handoff/active/feedback-amendments.md`).
 
 This is the contract that the implementation phase builds. Agents edit this file until they agree on it. The reviewer then marks it agreed, and from that point it changes only with a reason recorded in the handoff. Once implemented, `docs/api/openapi.json` (generated) is the contract, and this file stays as the record of why it changed.
 
@@ -52,6 +52,7 @@ The V2 migration itself resets existing local data. Before the renames, it delet
 - Old rows can't be kept as they are. Their `source_key`/`sense_key` would never match a new lookup, so saved words would show as "+". Saving one again would create a second `senses` row and a second card for the same meaning.
 - Recomputing the hashes in SQL was rejected. Postgres `lower()` depends on the collation and can differ from Java's `toLowerCase(Locale.ROOT)`, so a recomputed id could silently differ from the one the backend computes.
 - Putting the reset in the migration, rather than telling developers to recreate their database, means nobody ends up with stale rows by skipping a doc step.
+- This makes V2 a one-off exception to the `backend/AGENTS.md` rule that a migration is backward-compatible with the previous release (expand → migrate → contract): it renames columns in place and deletes rows. Nothing is deployed yet, so there is no previous release to keep running, and the sense-id change would make compatibility moot anyway. Record the exception in `backend/intent.md` (section 5); from V3 on, the rule applies again (reviewer clarification, ClaudeC-Fable, 2026-11-18).
 
 ## 2. Lookup split from saved state (F3)
 ### `GET /api/dictionary/lookup?q=`
@@ -75,11 +76,11 @@ The V2 migration itself resets existing local data. Before the renames, it delet
 - At least 1 and at most 100 `sense_id` values, sent as a repeated query parameter (OpenAPI `style: form, explode: true`, which the generated web client sends by default). A lookup returns far fewer senses than 100.
 - `422 {detail}` when there is no `sense_id`, more than 100, or a blank one. By default Spring answers all three with `400`, so `ApiExceptionHandler` overrides both sources to `422`, as it already does for invalid bodies:
   - a missing required parameter raises `MissingServletRequestParameterException`;
-  - the limit and the blank check, written as constraints on the parameter (`@Size(min = 1, max = 100) List<@NotBlank String>`), go through Spring's built-in method validation and raise `HandlerMethodValidationException`.
+  - the limit and the blank check, written as constraints on the parameter (`@Size(min = 1, max = 100) List<@NotBlank String>`), go through Spring's built-in method validation and raise `HandlerMethodValidationException`. That built-in validation runs on its own when a parameter carries a constraint; don't put `@Validated` on the controller class. Spring skips the built-in path for a class annotated `@Validated` and uses the AOP interceptor instead, which throws `ConstraintViolationException`, and that would be a 500 (verified in `HandlerMethod.checkArguments`, spring-web 7.0.10; reviewer clarification, ClaudeC-Fable, 2026-11-18).
   When the user is signed out, `401` wins over `422`, because security runs before the controller.
 - Duplicate ids are allowed and count towards the limit as sent. The response has at most one entry per sense, and the order of its entries has no meaning.
 - Schema name `SavedSense` (`{sense_id, card_id}`, both required). Operation id `listSavedSenses`.
-- Never cached: `Cache-Control: private, no-store`.
+- Never cached. Spring Security's default header (`Cache-Control: no-cache, no-store, max-age=0, must-revalidate`), which every other card endpoint already carries, does this; the controller sets nothing (reviewer clarification, ClaudeC-Fable, 2026-11-18: the draft said `private, no-store`, which would have meant a bespoke header on this one endpoint for no gain).
 - Per-user isolation test: another user's cards never appear.
 
 ### Unchanged endpoints apart from the renames
@@ -108,7 +109,7 @@ Code that uses today's names or the user-dependent lookup. Found with `git grep`
 - Backend tests:
   - `DictionaryApiTest`: the renames (including its raw `lexemes` insert); its saved/card_id assertions move to a new saved-state test, and it gains the cache-header test.
   - `SenseIdsTest`: the expected hashes change.
-  - `CardApiTest`: the renames (including its raw SQL), and its lookup saved/card_id assertions move to the new saved-state test too: the save, delete and per-user isolation flows read them from the lookup today.
+  - `CardApiTest`: the renames (including its raw SQL, whose `INSERT INTO user_cards` must also supply the new `NOT NULL` columns `source_lang` and `target_lang`), and its lookup saved/card_id assertions move to the new saved-state test too: the save, delete and per-user isolation flows read them from the lookup today.
   - `FakeDictionaryProviderTest` and `OpenApiContractTest`: the renames.
 - Web:
   - `api/`: `schema.d.ts` (regenerated), `types.ts` (add `SavedSense`), and `client.ts` with `client.test.ts` (the new `listSavedSenses`).
