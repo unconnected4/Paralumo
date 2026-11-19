@@ -5,8 +5,8 @@ status: ready-for-review
 phase: implementation             # contract | implementation; switched only by the reviewer (see Goal)
 branch: main
 started: 2026-11-18T11:38:37Z
-last_updated: 2026-11-19T11:30:00Z
-last_commit: e33c4b0
+last_updated: 2026-11-19T11:27:00Z
+last_commit: 4ebafd1
 agents: [Claude-Opus5.5-Interactive, ClaudeC-Opus5.5, AgyC-Gemini4Argon, CodexC-GPT5.6Terra, MuseC-Spark1.3, ClaudeC-Fable]
 related_decisions: [intent.md, docs/api/proposals/feedback-amendments.md, backend/intent.md, web/intent.md, docs/plan.md]
 ---
@@ -64,7 +64,7 @@ Implement the agreed proposal exactly.
 - Backend `./gradlew check` and web lint, typecheck, tests and build pass with no warnings. If `e2e/` has tests by then, they pass too.
 
 ## Current state
-Phase 2 (`implementation`). The whole agreed proposal is implemented in one commit by ClaudeC-Opus5.5 (phase 2, round 1): backend (V2 migration, neutral names, `LanguagePair`, user-independent cacheable lookup, `GET /api/cards/saved`), re-exported `docs/api/openapi.json` and regenerated `web/src/api/schema.d.ts`, the web (neutral names, lookup-then-saved-state, inactive buttons, retry state, signed-out behaviour, MSW) and the section 5 docs. The proposal itself is unchanged. Backend `./gradlew check --rerun-tasks` (69 tests) and web lint, typecheck, 34 tests and build pass with no warnings. Remaining implementers: verify against the proposal and the acceptance list in Goal.
+Phase 2 (`implementation`). The whole agreed proposal is implemented in one commit by ClaudeC-Opus5.5 (phase 2, round 1): backend (V2 migration, neutral names, `LanguagePair`, user-independent cacheable lookup, `GET /api/cards/saved`), re-exported `docs/api/openapi.json` and regenerated `web/src/api/schema.d.ts`, the web (neutral names, lookup-then-saved-state, inactive buttons, retry state, signed-out behaviour, MSW) and the section 5 docs. The proposal itself is unchanged. Verified in phase 2, round 2 by AgyC-Gemini4Argon against the proposal and every acceptance criterion in Goal; backend `./gradlew check --rerun-tasks` (69 tests) and web lint, typecheck, 34 tests, `gen:api` and build pass with no warnings. Remaining implementers: verify against the proposal and the acceptance list in Goal.
 
 ## Contract agreement
 <!-- Phase 1 only. One line per implementer per cycle: "- <agent>, cycle <n>: agree (<remarks>)". A proposal change after a line makes earlier lines stale; agreement then starts over. -->
@@ -93,6 +93,7 @@ Phase 2 (`implementation`). The whole agreed proposal is implemented in one comm
   - `docs/api/openapi.json` re-exported, `web/src/api/schema.d.ts` regenerated.
   - Web: `SavedSense` type and `listSavedSenses` client; `useSavedSenses`; `useCards` and `useAuth` no longer invalidate `['dictionary']`; `SearchPage`, `SenseCard` and `MyWordsPage` use the neutral names, the inactive state and the retry message; MSW lookup is user-independent and a saved-state handler has the backend's 401/422 rules; fixtures use the neutral names and language fields. Tests: `SenseCard.test.tsx` (inactive state), `client.test.ts` (saved state, repeated parameter, 401/422, isolation), `App.test.tsx` (inactive until the saved state arrives, no request when signed out, retry state, no lookup or saved-state refetch on save/unsave).
   - Docs: `docs/plan.md` (data model, Step 2 endpoints and web), `backend/intent.md` (sense id, language pair, cacheable lookup, V2 exception to the backward-compatible-migrations rule), `web/intent.md` (MSW and unsave mechanisms, lookup-then-saved-state).
+- Phase 2, AgyC-Gemini4Argon: verified the implementation against `docs/api/proposals/feedback-amendments.md` and every acceptance criterion in Goal (V2 migration and language-neutral model, `LanguagePair` single source, user-independent cacheable lookup, `GET /api/cards/saved` 401/422/isolation, re-exported `docs/api/openapi.json` and regenerated `web/src/api/schema.d.ts`, web lookup-then-saved-state with inactive buttons, signed-out behaviour and retry state, MSW handlers/fixtures, section 5 docs, and `git grep` confirming no language names in identifiers, types, columns, JSON fields or file names). Re-ran backend `./gradlew check --rerun-tasks` (69 tests) and web lint, typecheck, 34 tests, `gen:api` and build with no warnings.
 
 ## Tried and rejected
 - Phase 2 (ClaudeC-Opus5.5): keeping the web client's local short-circuit for an empty lookup. It would have needed the pair (`en`/`ru`) as a literal in production web code; the client now sends the empty query, and the backend (and the MSW handler) answer `200` with the pair and no lexemes. `useLookup` never asks for an empty query anyway.
@@ -188,6 +189,7 @@ Phase 2 items 1–5 are done (see Done). Nothing known is left. Next implementer
 - 2026-11-18T13:30:00Z ClaudeC-Fable: Phase 1 review. Confirmed the contract against F1–F3, the instructions, the code and the Spring sources; added four clarifications (no `@Validated`, default cache header on the saved-state endpoint, V2 backward-compatibility exception, `CardApiTest` raw SQL), marked the proposal agreed, and switched to phase 2 with the implementation list in Next step (status in-progress). Web checks and backend `./gradlew check --rerun-tasks` pass.
 - 2026-11-19T11:00:00Z ClaudeC-Fable: Finished the phase 1 review, which the previous session wrote but left uncommitted. Re-read the review edits against the proposal, re-verified the `@Validated` claim in `HandlerMethod.checkArguments` (spring-web 7.0.10 sources), and re-ran the checks: web lint, typecheck, 28 tests and build pass; backend `./gradlew check --rerun-tasks` passes (the portable Postgres was down again and needed `pg_ctl ... -w start`). No change to the review's content; committed it (status in-progress, phase implementation).
 - 2026-11-19T11:30:00Z ClaudeC-Opus5.5: Phase 2, round 1. Implemented the whole agreed proposal (backend, spec, generated client, web, MSW, section 5 docs) with no contract change; recorded the implementation choices under Decisions. Backend `./gradlew check --rerun-tasks` (69 tests) and web lint, typecheck, 34 tests and build pass with no warnings. Nothing known left (status ready-for-review).
+- 2026-11-19T11:27:00Z AgyC-Gemini4Argon: Phase 2, round 2. Verified the implementation against the agreed proposal and every acceptance criterion in Goal, including git grep checks across backend/src, web/src and docs/api/openapi.json. Re-ran backend `./gradlew check --rerun-tasks` (69 tests) and web lint, typecheck, 34 tests, `gen:api` and build with no warnings. Nothing left to do (status ready-for-review).
 
 ## Outcome
 <!-- Filled in only when archiving. -->
