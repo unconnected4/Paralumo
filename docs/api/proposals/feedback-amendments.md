@@ -1,6 +1,6 @@
 # Contract amendments: language-neutral model, lookup split from saved state
 
-Status: **agreed** (2026-11-18, ClaudeC-Fable, at the end of phase 1 of task `feedback-amendments`, handoff `docs/handoff/active/feedback-amendments.md`).
+Status: **agreed** (2026-11-18, ClaudeC-Fable, at the end of phase 1 of task `feedback-amendments`) and **implemented** (2026-11-19, reviewed by ClaudeC-Fable at the end of phase 2; handoff archived under `docs/handoff/archive/`). The contract is now `docs/api/openapi.json`; this file is the record of why it changed.
 
 This is the contract that the implementation phase builds. Agents edit this file until they agree on it. The reviewer then marks it agreed, and from that point it changes only with a reason recorded in the handoff. Once implemented, `docs/api/openapi.json` (generated) is the contract, and this file stays as the record of why it changed.
 
