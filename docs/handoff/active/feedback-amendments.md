@@ -5,8 +5,8 @@ status: ready-for-review
 phase: implementation             # contract | implementation; switched only by the reviewer (see Goal)
 branch: main
 started: 2026-11-18T11:38:37Z
-last_updated: 2026-11-19T11:33:23Z
-last_commit: 3cc3212
+last_updated: 2026-11-19T13:30:00Z
+last_commit: 53dbff2
 agents: [Claude-Opus5.5-Interactive, ClaudeC-Opus5.5, AgyC-Gemini4Argon, CodexC-GPT5.6Terra, MuseC-Spark1.3, ClaudeC-Fable]
 related_decisions: [intent.md, docs/api/proposals/feedback-amendments.md, backend/intent.md, web/intent.md, docs/plan.md]
 ---
@@ -107,6 +107,7 @@ Phase 2 (`implementation`). The whole agreed proposal is implemented in one comm
 - Web `npm run lint`, `npm run typecheck`, `npm test -- --run`, and `npm run build`. All commands exited 0; the production build completed without warnings.
   - Note, cycle 2 (ClaudeC-Opus5.5): on this machine the backend check does run with the portable JDK 25 and PostgreSQL 16 in the git-ignored `AgentsOutput/ClaudeC-Opus5.5/` (start Postgres with its `pg_ctl`, set `JAVA_HOME`). `./gradlew check` passed there this cycle.
   - Note, phase 1 review (ClaudeC-Fable): a Postgres started by an earlier session can die when a later session's tests make it fork (`pg.log`: child processes terminated with exception `0xC0000142`, then "database system is shut down"), and every integration test then fails with "Connection reset" from Flyway. Check `pg_isready` before the backend check and restart Postgres with `pg_ctl ... -w start` from your own session if needed. Also, a plain `./gradlew check` reports `UP-TO-DATE` when nothing changed; use `--rerun-tasks` to actually re-run the tests.
+  - Superseded for orchestrated rounds (Claude-Opus5.5-Interactive, 2026-11-19): don't start or restart Postgres from your session. The driver now runs it, detached, for the whole run, and the prompt's `Database:` line says where. A server started from an agent's session died when that session ended (Opus's round 1 at 11:20, Fable's review on 2026-11-18). The one GPT started in round 3 kept `codex.exe` from exiting until the 90-minute timeout. Details: `docs/orchestration.md`, "The database".
 
 ## Decisions made during this task
 - Two phases in one task, switched by the reviewer (by Alex, see Goal). It's one task rather than two so the implementation starts automatically once the reviewer approves, using the driver's existing reviewer `in-progress` route. The driver's note to that cycle will say "the reviewer recorded findings". At the switch, read Next step and `phase` instead.
@@ -192,6 +193,7 @@ Phase 2 items 1–5 are done (see Done). Nothing known is left. Next implementer
 - 2026-11-19T11:30:00Z ClaudeC-Opus5.5: Phase 2, round 1. Implemented the whole agreed proposal (backend, spec, generated client, web, MSW, section 5 docs) with no contract change; recorded the implementation choices under Decisions. Backend `./gradlew check --rerun-tasks` (69 tests) and web lint, typecheck, 34 tests and build pass with no warnings. Nothing known left (status ready-for-review).
 - 2026-11-19T11:27:00Z AgyC-Gemini4Argon: Phase 2, round 2. Verified the implementation against the agreed proposal and every acceptance criterion in Goal, including git grep checks across backend/src, web/src and docs/api/openapi.json. Re-ran backend `./gradlew check --rerun-tasks` (69 tests) and web lint, typecheck, 34 tests, `gen:api` and build with no warnings. Nothing left to do (status ready-for-review).
 - 2026-11-19T11:33:23Z CodexC-GPT5.6Terra: Phase 2, round 3. Independently verified the agreed implementation and every acceptance criterion, including the migration-history and saved-state grep boundaries and generated-client drift. Backend `./gradlew.bat check --rerun-tasks` and web lint, typecheck, 34 tests, `gen:api` and build all pass with no warnings. Nothing left to do (status ready-for-review).
+- 2026-11-19T13:30:00Z Claude-Opus5.5-Interactive: Outside the loop. The run stopped after round 3 because `codex.exe` stayed alive for 90 minutes after GPT's commit; GPT's work itself was complete. Made the driver own Postgres (see the superseded note under Tried and rejected). No task content changed. Next: resume with `-StartWith muse`, then the Fable review.
 
 ## Outcome
 <!-- Filled in only when archiving. -->

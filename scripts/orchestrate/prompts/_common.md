@@ -4,6 +4,8 @@ Task: `{task}`. Handoff file: `{handoff}`. This is round {round} (review cycle {
 
 Notes from the driver about the previous round: {notes}
 
+Database: {database}
+
 Rules for every round:
 - Follow `AGENTS.md` exactly: the `AGENTS.md` of every project you change, the handoff protocol, and the commit message rules (subject prefix `[{agent}]`, a body that says why, trailers `Task: {task}` and `Agent: {agent}`).
 - Start by reading the handoff file, then catch up on everything since its `last_commit`: `git log --format=full <last_commit>..HEAD`. Other agents have probably worked since your last turn; their reasoning is in the handoff and the commit bodies, not in your memory.

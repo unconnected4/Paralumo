@@ -128,6 +128,65 @@ function Write-Summary {
     Add-Content -LiteralPath $script:summaryPath -Value $Text -Encoding UTF8
 }
 
+# ---- database owned by the driver (roles.json "database"; docs/orchestration.md, "The database")
+
+function Invoke-PgTool {
+    # Runs a Postgres client tool quietly and returns its exit code. Native stderr would become
+    # an ErrorRecord under $ErrorActionPreference = 'Stop', so relax it for this call only.
+    param([string]$Exe, [string[]]$ToolArgs)
+    $prev = $ErrorActionPreference
+    try {
+        $ErrorActionPreference = 'Continue'
+        & $Exe @ToolArgs *> $null
+        return $LASTEXITCODE
+    } finally {
+        $ErrorActionPreference = $prev
+    }
+}
+
+function Test-DatabaseReady {
+    return ((Invoke-PgTool $script:db.isReady @('-h', $script:db.host, '-p', $script:db.port, '-t', '5')) -eq 0)
+}
+
+function Test-DatabaseRunning {
+    # pg_ctl status: 0 = a postmaster is running on this data directory, 3 = none.
+    return ((Invoke-PgTool $script:db.pgCtl @('-D', $script:db.dataDir, 'status')) -eq 0)
+}
+
+function Stop-Database {
+    $code = Invoke-PgTool $script:db.pgCtl @('-D', $script:db.dataDir, '-m', 'fast', '-w', '-t', '60', 'stop')
+    if ($code -ne 0 -and (Test-DatabaseRunning)) { throw "Could not stop Postgres (pg_ctl exit $code); see $($script:db.log)" }
+}
+
+function Start-Database {
+    # Detached on purpose. A server started from an agent's shell shares that session's console
+    # and dies when the session ends (new backends fail with 0xC0000142), and it holds the agent's
+    # output handles, which can keep the CLI from exiting. Start-Process without -NoNewWindow or
+    # redirection uses ShellExecute: pg_ctl and the postmaster get a hidden console of their own
+    # and inherit no handles from the driver or any agent.
+    $argString = ConvertTo-ArgumentString @('-D', $script:db.dataDir, '-l', $script:db.log, '-w', '-t', '120', 'start')
+    $p = Start-Process -FilePath $script:db.pgCtl -ArgumentList $argString -WindowStyle Hidden -PassThru
+    $null = $p.Handle   # PowerShell 5.1: ExitCode stays empty unless the handle is read before the wait
+    # WaitForExit on the object, not Start-Process -Wait: in 5.1 -Wait also waits for the
+    # postmaster, which never exits.
+    if (-not $p.WaitForExit(150000)) {
+        try { $p.Kill() } catch { }
+        throw "pg_ctl start did not return within 150 s; see $($script:db.log)"
+    }
+    if ($p.ExitCode -ne 0 -or -not (Test-DatabaseReady)) {
+        throw "Postgres did not start (pg_ctl exit $($p.ExitCode)); see $($script:db.log)"
+    }
+}
+
+function Assert-DatabaseUp {
+    # Before every round: the agent must find the database up. Restart it if it died.
+    param([string]$When)
+    if (Test-DatabaseReady) { return }
+    Write-Summary "Warning: Postgres was not accepting connections $When; restarting it. Log: $($script:db.log)"
+    if (Test-DatabaseRunning) { Stop-Database }
+    Start-Database
+}
+
 # ---------------------------------------------------------------- setup
 
 $repoRoot = (Invoke-Git @('rev-parse', '--show-toplevel')) | Select-Object -First 1
@@ -197,6 +256,27 @@ if (($cfg.PSObject.Properties.Name -contains 'env') -and $cfg.env) {
     }
 }
 
+# Optional "database" object: the Postgres the driver runs for the whole run (agents never start it).
+$script:db = $null
+$databaseNote = 'the driver does not manage a database in this run (no "database" in the config).'
+if (($cfg.PSObject.Properties.Name -contains 'database') -and $cfg.database) {
+    # Paths are relative to the repo root; Combine also accepts absolute ones (a test clone uses those).
+    $binDir = [System.IO.Path]::Combine($repoRoot, [string]$cfg.database.bin)
+    $script:db = @{
+        pgCtl   = Join-Path $binDir 'pg_ctl.exe'
+        isReady = Join-Path $binDir 'pg_isready.exe'
+        dataDir = [System.IO.Path]::GetFullPath([System.IO.Path]::Combine($repoRoot, [string]$cfg.database.dataDir))
+        log     = [System.IO.Path]::GetFullPath([System.IO.Path]::Combine($repoRoot, [string]$cfg.database.log))
+        host    = [string]$cfg.database.host
+        port    = [string]$cfg.database.port
+    }
+    foreach ($path in @($script:db.pgCtl, $script:db.isReady, $script:db.dataDir)) {
+        if (-not (Test-Path -LiteralPath $path)) { throw "database: $path not found (check database.bin and database.dataDir in $Config)" }
+    }
+    New-Item -ItemType Directory -Force -Path (Split-Path -Parent $script:db.log) | Out-Null
+    $databaseNote = "the driver runs PostgreSQL for this whole run at $($script:db.host):$($script:db.port) (data directory ``$([string]$cfg.database.dataDir)``, log ``$([string]$cfg.database.log)``), and it is up when your round starts. Use it as it is. Never start, stop, restart or re-initialise it, and never run a second instance, not even on a copy of the data directory: a server started from your session dies when your session ends, and it can keep your CLI from exiting. If ``pg_isready -h $($script:db.host) -p $($script:db.port)`` fails, don't work around it: record it in the handoff as an environment problem, say which checks you could not run, and finish the round."
+}
+
 $phase = 'implement'
 $implIndex = 0
 if ($StartWith) {
@@ -218,6 +298,16 @@ Write-Summary "# Orchestrator run $runStamp"
 Write-Summary "Task: $Task | start: $loopStart | config: $Config | max rounds: $MaxRounds"
 Write-Summary "Implementers: $implementerLabels | reviewer: $reviewer ($($cfg.roles.$reviewer.agent))"
 if ($envLabels.Count -gt 0) { Write-Summary "Environment for agents: $($envLabels -join '; ')" }
+if ($script:db -and -not $DryRun) {
+    # A server that is already running was started by someone else (an agent, a terminal) and
+    # shares that process's console, so it can die mid-run. Restart it under the driver.
+    if (Test-DatabaseRunning) {
+        Write-Summary "Database: restarting the running Postgres so it runs detached from any session ($($script:db.dataDir))."
+        Stop-Database
+    }
+    Start-Database
+    Write-Summary "Database: Postgres up at $($script:db.host):$($script:db.port), started by the driver. Log: $($script:db.log)"
+}
 Write-Summary ''
 
 # ---------------------------------------------------------------- loop
@@ -257,6 +347,7 @@ while ($round -lt $MaxRounds) {
     $prompt = $prompt.Replace('{agent}', $agent).Replace('{task}', $Task).Replace('{handoff}', $handoffRel)
     $prompt = $prompt.Replace('{round}', [string]$round).Replace('{cycle}', [string]$cycle)
     $prompt = $prompt.Replace('{implementers}', $implementerLabels).Replace('{notes}', $notes)
+    $prompt = $prompt.Replace('{database}', $databaseNote)
     $promptPath = Join-Path $runDir "$roundTag.prompt.md"
     [System.IO.File]::WriteAllText($promptPath, $prompt, (New-Object System.Text.UTF8Encoding($false)))
 
@@ -277,6 +368,11 @@ while ($round -lt $MaxRounds) {
         break
     }
 
+    if ($script:db) {
+        try { Assert-DatabaseUp "before round $round" }
+        catch { $stopReason = "round $round ($role) not started: $($_.Exception.Message)"; break }
+    }
+
     $stdoutPath = Join-Path $runDir "$roundTag.stdout.log"
     $stderrPath = Join-Path $runDir "$roundTag.stderr.log"
     $started = Get-Date
@@ -292,6 +388,11 @@ while ($round -lt $MaxRounds) {
     }
     $elapsed = [int]((Get-Date) - $started).TotalMinutes
     Write-Summary "Exit code: $($proc.ExitCode) after $elapsed min. Logs: $stdoutPath"
+    # Evidence only: the next round restarts it anyway. A database that went down during a round
+    # means that round's checks may have run without it; the reviewer should know.
+    if ($script:db -and -not (Test-DatabaseReady)) {
+        Write-Summary "Warning: Postgres was down at the end of round $round; that round's backend checks may not have run against it. Log: $($script:db.log)"
+    }
 
     # ---- protocol checks, same for every role
     if ($proc.ExitCode -ne 0) {
@@ -427,6 +528,12 @@ if ($openQuestions.Count -gt 0) {
 if ($newQuestions.Count -gt 0) {
     Write-Summary 'For Alex lines added during this run (including ones the reviewer may have resolved since):'
     foreach ($q in $newQuestions) { Write-Summary "- $q" }
+}
+if ($script:db -and -not $DryRun) {
+    # Left running on purpose: it is detached, so it survives this terminal, and Alex's own
+    # bootRun and checks use the same database.
+    $dbState = if (Test-DatabaseReady) { 'still running (left up for local use)' } else { 'not running' }
+    Write-Summary "Database: Postgres $dbState. Stop it with: `"$($script:db.pgCtl)`" -D `"$($script:db.dataDir)`" stop"
 }
 Write-Summary "Run folder: $runDir"
 exit $exitCode

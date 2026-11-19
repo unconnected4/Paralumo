@@ -11,6 +11,13 @@
   "env": {
     "GRADLE_OPTS": "-Dorg.gradle.daemon=false"
   },
+  "database": {
+    "bin": "AgentsOutput/ClaudeC-Opus5.5/pg/pgsql/bin",
+    "dataDir": "AgentsOutput/ClaudeC-Opus5.5/pgdata",
+    "log": "AgentsOutput/orchestrator/postgres.log",
+    "host": "localhost",
+    "port": 5432
+  },
   "roles": {
     "opus": {
       "agent": "ClaudeC-Opus5.5",

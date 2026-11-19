@@ -25,10 +25,11 @@ scripts/orchestrate/
 AgentsOutput/orchestrator/<UTC ts>-<task>/   per-run logs and rendered prompts (git-ignored)
 ```
 
-`roles.json` has four parts:
+`roles.json` has five parts:
 - `pipeline`: `implementers` (ordered list of role names) and `reviewer` (one role name).
 - `limits`: `maxRounds` (whole run), `maxImplementationRoundsPerCycle` (forces a review when implementers never agree they are finished), `roundTimeoutMinutes`.
 - `env` (optional): environment variables the driver sets for itself, so every agent process inherits them. They are printed in the run summary. Currently `GRADLE_OPTS=-Dorg.gradle.daemon=false`; see "A round that finishes but does not exit".
+- `database` (optional): the Postgres the driver runs for the whole run. Fields: `bin` (directory with `pg_ctl.exe` and `pg_isready.exe`), `dataDir`, `log`, `host` and `port`. Paths are relative to the repo root, or absolute. The current values point at the portable PostgreSQL 16 in `AgentsOutput/ClaudeC-Opus5.5/`, because this machine has no Docker; see "The database".
 - `roles.<name>`: `agent` (the agent name used in commits and handoffs), `command`, `model`, `args` and `prompt` (template path). `args` holds the CLI's own flags with two placeholders the driver fills: `{prompt}` (the one-line pointer to the rendered prompt) and `{model}` (the role's `model`). The model flag stays in `args` because each CLI spells it differently: `claude -p {prompt} --model {model} --dangerously-skip-permissions`, `agy -p {prompt} --model {model} --dangerously-skip-permissions`, `codex exec --model {model} --dangerously-bypass-approvals-and-sandbox {prompt}`, `muse exec --model {model} --yolo --disable-request-user-input {prompt}`. A role without a `model` field must not reference `{model}`; the driver refuses to start otherwise. The chosen model is printed in every round's summary line.
 
 Current roles and agent names: `opus` (Claude Code, `claude-opus-5-5`, agent `ClaudeC-Opus5.5`), `gemini` (Antigravity CLI `agy`, `gemini-4-argon-high`, agent `AgyC-Gemini4Argon`), `gpt` (Codex CLI, `gpt-5.6-terra`, agent `CodexC-GPT5.6Terra`), `muse` (Muse Code CLI `muse`, `muse-spark-1.3`, agent `MuseC-Spark1.3`) as implementers in that order, `fable` (Claude Code, `claude-fable-5-1`, agent `ClaudeC-Fable`) as reviewer. The names follow the convention in `AGENTS.md` ("Agent names and output folders"), which is the list of record; a name identifies tool + model and is shared by interactive sessions using the same (by Alex, 2026-10-28). The `agy` flags and model ID have been verified end-to-end. Codex CLI version 0.164.0 accepted the `exec`, `--model`, and `--dangerously-bypass-approvals-and-sandbox` flags; a read-only invocation verified `gpt-5.6-terra` with the signed-in account on 2026-10-28.
@@ -43,7 +44,7 @@ The handoff front matter `status` is the agents' only control signal:
 - `done` / `abandoned`: set by the reviewer only, who then archives the handoff.
 
 ## One round
-1. Record `HEAD` and require a clean working tree.
+1. Record `HEAD` and require a clean working tree. With a `database` in the config, make sure Postgres accepts connections, restarting it if needed (see "The database").
 2. Render the role's prompt template with `{agent}`, `{task}`, `{handoff}`, `{round}`, `{cycle}`, `{implementers}` and `{notes}` (what the driver wants the agent to know about the previous round) and save it to the run folder. The agent is started with a one-line prompt that points at that file; this avoids shell quoting of multi-line prompts and works the same for every CLI.
 3. Run the command with stdout/stderr captured to the run folder, with a timeout.
 4. Protocol checks, the same for every role. Any failure stops the loop with a reason:
@@ -101,6 +102,23 @@ Countermeasure: `roles.json` → `env` sets `GRADLE_OPTS=-Dorg.gradle.daemon=fal
 
 Outcome: on the resumed run the same day, Codex ran three Gradle builds with the setting and `codex.exe` exited in the same minute as its last commit. That fits the explanation but is one observation. If a Codex round hangs again with no leftover process, the cause is something else: look at what is still running under `codex.exe` before the timeout.
 
+Seen again on 2026-11-19 in round 3 of `feedback-amendments`, with no Gradle daemon this time. Codex committed at 11:34 but was killed at 12:58. It had found the database down and started Postgres from its own shell at 11:30, and that server was still running after the kill. Same pattern: a long-lived process that Codex started kept it from exiting. The countermeasure is that agents no longer start the database (next section).
+
+## The database
+The backend checks need Postgres, and agents used to start it themselves (on this machine, from the portable install, since there is no Docker). That broke runs in two ways:
+- **A server started from an agent's session dies when that session ends.** The postmaster survives, but the next backend it starts fails with exception `0xC0000142` (DLL initialisation failed), and the server shuts down. The timestamps match exactly: on 2026-11-18 at 13:12:57 at the end of Fable's review, and on 2026-11-19 at 11:20:08 when Opus's round ended. Gemini's round started into a dead database, so it ran its check against its own temporary copy.
+- **It can keep the CLI from exiting.** See the 2026-11-19 entry in the previous section.
+
+So the driver owns the database (by Alex, 2026-11-19: "implement the fix, driver owns the database"):
+- **Run start.** If a server is already running on `dataDir`, it was started by someone else and is tied to that process. The driver stops it (`pg_ctl stop -m fast`) and starts it again itself. Dry runs leave the database alone.
+- **Detached.** The driver starts `pg_ctl` with `Start-Process -WindowStyle Hidden`, without `-NoNewWindow` or redirection. That goes through ShellExecute, so `pg_ctl` and the postmaster get a hidden console of their own and inherit no handles from the driver or any agent. The server survives the driver's terminal and every agent session.
+- **Before every round,** `pg_isready` must succeed. Otherwise the driver writes a warning to the summary and restarts the server, and the round starts against a working database. If the restart fails, the run stops with the reason.
+- **After every round,** a database that is down gets a warning in the summary, because that round's backend checks may not have run against it.
+- **Run end.** The server is left running, because Alex's own `bootRun` and checks use the same database. The summary prints the `pg_ctl stop` command.
+- **Agents** are told on the prompt's `Database:` line (`{database}` in `_common.md`) where it runs. They must not start, stop, restart or copy it, and must not run a second instance. If it is down, they record that in the handoff and finish the round.
+
+The data directory stays in `AgentsOutput/ClaudeC-Opus5.5/`, where Opus first set it up. `backend/.env` already points at its databases, and moving it would mean recreating them. The driver's log goes to `AgentsOutput/orchestrator/postgres.log`.
+
 ## Limits of the first version
 - Sequential only. Parallel roles would need one worktree per agent; not planned until there is a reason.
 - Only agents with a CLI can be triggered. Desktop-app agents without a CLI (such as Cowork) stay manual; the driver's answer for them is "stop and tell Alex".
@@ -108,7 +126,11 @@ Outcome: on the resumed run the same day, Codex ran three Gradle builds with the
 - A killed round (timeout) runs `taskkill /T /F` on the CLI process ID so child processes of `.cmd` shims are also terminated.
 
 ## Testing the driver
-Stop paths are tested by pointing `-Config` at a copy of `roles.json` whose role commands are stand-ins, run in a scratch clone so no test commit lands in the real history. Verified so far: dry run for an implementer and for the reviewer, `-StartWith` validation, a role that exits without committing (`cmd.exe /c echo`), a role that exits non-zero (`cmd.exe /c exit 3`), the open-questions report, the dirty-tree hint and `-AdoptUncommitted`.
+Stop paths are tested by pointing `-Config` at a copy of `roles.json` whose role commands are stand-ins, run in a scratch clone so no test commit lands in the real history. Verified so far: dry run for an implementer and for the reviewer, `-StartWith` validation, a role that exits without committing (`cmd.exe /c echo`), a role that exits non-zero (`cmd.exe /c exit 3`), the open-questions report, the dirty-tree hint and `-AdoptUncommitted`. The database handling, on 2026-11-19: a stand-in role (a PowerShell script that commits) ran two rounds against the real portable Postgres. Round 1 stopped the server itself.
+- The driver restarted the server that was already running (left by an agent) at run start.
+- It warned at the end of round 1 and restarted the server before round 2.
+- Both rounds found `pg_isready` succeeding.
+- After the driver's shell had exited, the server still accepted new connections, each served by a newly started backend process.
 
 Verified by real runs: a handoff-only implementer round counted as nothing to do (Codex, 2026-10-28); and on 2026-11-06 the first complete run, on `step1-backend` with Opus as the only implementer: `ready-for-review` → streak → review, the reviewer resolving a `For Alex:` question, setting `done` and archiving, and the driver detecting the archived handoff and stopping successfully. Also on 2026-11-06, two runs of the full pipeline on `step1-crosscheck` (eight rounds in all): all three CLIs as committing implementers, `in-progress` with code changes passing the turn on, the streak resetting on a code change and completing with three `ready-for-review` reports in a row (Gemini, Codex, Opus), then the reviewer closing and archiving. Not yet exercised: the per-cycle cap, the implementer `blocked` hand-over, the reviewer's `in-progress` and `blocked` outcomes, and the stale `last_commit` warning.
 
