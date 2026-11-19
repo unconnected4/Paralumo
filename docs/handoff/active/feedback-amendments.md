@@ -5,8 +5,8 @@ status: ready-for-review
 phase: implementation             # contract | implementation; switched only by the reviewer (see Goal)
 branch: main
 started: 2026-11-18T11:38:37Z
-last_updated: 2026-11-19T13:42:30Z
-last_commit: f5bcb37
+last_updated: 2026-11-19T13:44:51Z
+last_commit: 2715577
 agents: [Claude-Opus5.5-Interactive, ClaudeC-Opus5.5, AgyC-Gemini4Argon, CodexC-GPT5.6Terra, MuseC-Spark1.3, ClaudeC-Fable]
 related_decisions: [intent.md, docs/api/proposals/feedback-amendments.md, backend/intent.md, web/intent.md, docs/plan.md]
 ---
@@ -64,7 +64,7 @@ Implement the agreed proposal exactly.
 - Backend `./gradlew check` and web lint, typecheck, tests and build pass with no warnings. If `e2e/` has tests by then, they pass too.
 
 ## Current state
-Phase 2 (`implementation`). The whole agreed proposal is implemented in one commit by ClaudeC-Opus5.5 (phase 2, round 1): backend (V2 migration, neutral names, `LanguagePair`, user-independent cacheable lookup, `GET /api/cards/saved`), re-exported `docs/api/openapi.json` and regenerated `web/src/api/schema.d.ts`, the web (neutral names, lookup-then-saved-state, inactive buttons, retry state, signed-out behaviour, MSW) and the section 5 docs. The proposal itself is unchanged. Verified in phase 2, round 2 by AgyC-Gemini4Argon, independently in round 3 by CodexC-GPT5.6Terra, and independently in round 4 by MuseC-Spark1.3 against the proposal and every acceptance criterion in Goal; backend `./gradlew check --rerun-tasks` and web lint, typecheck, 34 tests, `gen:api` and build pass with no warnings. All four implementers have now verified in a row with no code change in between, and ClaudeC-Opus5.5 (round 2) and AgyC-Gemini4Argon (round 3) re-verified in the resumed run. Nothing known is left; ready for the phase 2 review.
+Phase 2 (`implementation`). The whole agreed proposal is implemented in one commit by ClaudeC-Opus5.5 (phase 2, round 1): backend (V2 migration, neutral names, `LanguagePair`, user-independent cacheable lookup, `GET /api/cards/saved`), re-exported `docs/api/openapi.json` and regenerated `web/src/api/schema.d.ts`, the web (neutral names, lookup-then-saved-state, inactive buttons, retry state, signed-out behaviour, MSW) and the section 5 docs. The proposal itself is unchanged. Verified in phase 2, round 2 by AgyC-Gemini4Argon, independently in round 3 by CodexC-GPT5.6Terra, and independently in round 4 by MuseC-Spark1.3 against the proposal and every acceptance criterion in Goal; backend `./gradlew check --rerun-tasks` and web lint, typecheck, 34 tests, `gen:api` and build pass with no warnings. All four implementers have now verified in a row with no code change in between, and ClaudeC-Opus5.5 (round 2) and AgyC-Gemini4Argon (round 3) re-verified in the resumed run. In the resumed round 4, the required `pg_isready -h localhost -p 5432` check could not run because `pg_isready` is absent from `PATH`; the driver instructions prohibit a workaround, so this round did not re-run project checks. Nothing known is left; ready for the phase 2 review.
 
 ## Contract agreement
 <!-- Phase 1 only. One line per implementer per cycle: "- <agent>, cycle <n>: agree (<remarks>)". A proposal change after a line makes earlier lines stale; agreement then starts over. -->
@@ -108,6 +108,7 @@ Phase 2 (`implementation`). The whole agreed proposal is implemented in one comm
 - `ExampleSentence.source` as the new name for `en` (draft). Replaced by `text`, because `source` already names the provider (`senses.source`, `DictionaryProvider.source()`).
 - Backend `./gradlew.bat check` in this session. Blocked before compilation because this machine has no JDK 25 toolchain; Docker is also unavailable on `PATH`, so its required integration-test infrastructure cannot be started. This is environment setup, not a contract defect.
 - Web `npm run lint`, `npm run typecheck`, `npm test -- --run`, and `npm run build`. All commands exited 0; the production build completed without warnings.
+  - Phase 2, resumed round 4 (CodexC-GPT5.6Terra): `pg_isready -h localhost -p 5432` could not start because the executable is not on `PATH`. Per the driver instruction, no alternative database probe, restart or second server was attempted; consequently backend `./gradlew.bat check --rerun-tasks` and web lint, typecheck, tests, API generation and build were not re-run in this round.
   - Note, cycle 2 (ClaudeC-Opus5.5): on this machine the backend check does run with the portable JDK 25 and PostgreSQL 16 in the git-ignored `AgentsOutput/ClaudeC-Opus5.5/` (start Postgres with its `pg_ctl`, set `JAVA_HOME`). `./gradlew check` passed there this cycle.
   - Note, phase 1 review (ClaudeC-Fable): a Postgres started by an earlier session can die when a later session's tests make it fork (`pg.log`: child processes terminated with exception `0xC0000142`, then "database system is shut down"), and every integration test then fails with "Connection reset" from Flyway. Check `pg_isready` before the backend check and restart Postgres with `pg_ctl ... -w start` from your own session if needed. Also, a plain `./gradlew check` reports `UP-TO-DATE` when nothing changed; use `--rerun-tasks` to actually re-run the tests.
   - Superseded for orchestrated rounds (Claude-Opus5.5-Interactive, 2026-11-19): don't start or restart Postgres from your session. The driver now runs it, detached, for the whole run, and the prompt's `Database:` line says where. A server started from an agent's session died when that session ended (Opus's round 1 at 11:20, Fable's review on 2026-11-18). The one GPT started in round 3 kept `codex.exe` from exiting until the 90-minute timeout. Details: `docs/orchestration.md`, "The database".
@@ -174,6 +175,7 @@ Phase 2 (`implementation`). The whole agreed proposal is implemented in one comm
 
 ## Next step
 Phase 2 items 1–5 are done (see Done). Nothing known is left. Next implementers: verify the implementation against the proposal and every acceptance criterion in Goal, re-run both projects' checks, and record agreement or findings. Useful checks:
+- If `pg_isready -h localhost -p 5432` is unavailable or fails, follow the driver instruction: record the environment problem and do not work around it; the backend and web checks cannot be run in that round.
 - `git grep -nE "translation_ru|synonyms_ru|meanings_en|translationRu|LANG_EN|\bsaved\b" -- backend/src web/src docs/api/openapi.json` should hit only `V1__...sql` and the saved-state code and tests.
 - The acceptance tests: `DictionaryApiTest` (cache headers, same response for every credential), `SavedSensesApiTest` (401/422, isolation), `App.test.tsx` (inactive until saved state, no request when signed out, retry state).
 - e2e: `e2e/` still holds only a README, so nothing to do there.
@@ -200,6 +202,7 @@ Phase 2 items 1–5 are done (see Done). Nothing known is left. Next implementer
 - 2026-11-19T13:35:17Z MuseC-Spark1.3: Phase 2, round 4. Independently verified the implementation against the agreed proposal and every acceptance criterion; found nothing left to do (status ready-for-review). Backend `./gradlew check --rerun-tasks` passes (68 tests, 0 failures/errors/skipped: ApiExceptionHandler 1, HealthController 1, CorsConfig 3, SessionTokens 6, FakeDictionaryProvider 4, SenseIds 5, AuthApi 13, CardApi 12, DictionaryApi 10, HealthApi 3, OpenApiContract 1, SavedSenses 9); web lint, typecheck, 34 tests, `gen:api` (no diff) and build pass with no warnings. Only change is this handoff.
 - 2026-11-19T13:45:00Z ClaudeC-Opus5.5: Phase 2, resumed run round 2. Re-verified the implementation against the proposal and acceptance criteria; backend `./gradlew check --rerun-tasks` (68 tests + OpenAPI drift check) and web lint, typecheck, 34 tests, `gen:api` and build pass with no warnings. Nothing left to do (status ready-for-review). Only change is this handoff.
 - 2026-11-19T13:42:30Z AgyC-Gemini4Argon: Phase 2, resumed run round 3. Re-verified the implementation against the agreed proposal and every acceptance criterion; backend `./gradlew.bat check --rerun-tasks` (68 tests + OpenAPI drift check) and web lint, typecheck, 34 tests, `gen:api` (no diff) and build pass with no warnings. Nothing left to do (status ready-for-review). Only change is this handoff.
+- 2026-11-19T13:44:51Z CodexC-GPT5.6Terra: Phase 2, resumed run round 4. `pg_isready -h localhost -p 5432` could not run because the executable is absent from `PATH`; per the driver instruction, did not work around it or run backend/web checks. No implementation finding was made; status remains ready-for-review. Only change is this handoff.
 
 ## Outcome
 <!-- Filled in only when archiving. -->
