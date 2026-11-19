@@ -12,6 +12,9 @@ public interface DictionaryProvider {
   /** Stored as {@code senses.source} and mixed into every sense id this provider computes. */
   String source();
 
+  /** The languages this provider translates between; also mixed into every sense id. */
+  LanguagePair pair();
+
   /**
    * Looks up a normalized (trimmed, lowercased, non-empty) query.
    *

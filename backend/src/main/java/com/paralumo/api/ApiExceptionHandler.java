@@ -6,6 +6,7 @@ import java.util.stream.Collectors;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.MessageSourceResolvable;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
@@ -14,14 +15,17 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
+import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
 /**
  * Every error is an RFC 9457 problem body; its {@code detail} is the message the web client shows.
- * Invalid request bodies are 422, as the Step 0 contract expects, rather than Spring's 400.
+ * Invalid request bodies and query parameters are 422, as the Step 0 contract expects, rather than
+ * Spring's 400.
  */
 @RestControllerAdvice
 class ApiExceptionHandler extends ResponseEntityExceptionHandler {
@@ -81,6 +85,36 @@ class ApiExceptionHandler extends ResponseEntityExceptionHandler {
         "Request body is missing or not valid JSON",
         headers,
         request);
+  }
+
+  @Override
+  protected @Nullable ResponseEntity<Object> handleMissingServletRequestParameter(
+      MissingServletRequestParameterException ex,
+      HttpHeaders headers,
+      HttpStatusCode status,
+      WebRequest request) {
+    return problem(
+        ex,
+        HttpStatus.UNPROCESSABLE_CONTENT,
+        ex.getParameterName() + " is required",
+        headers,
+        request);
+  }
+
+  /** Constraint violations on handler parameters, such as a query parameter's size limit. */
+  @Override
+  protected @Nullable ResponseEntity<Object> handleHandlerMethodValidationException(
+      HandlerMethodValidationException ex,
+      HttpHeaders headers,
+      HttpStatusCode status,
+      WebRequest request) {
+    String detail =
+        ex.getAllErrors().stream()
+            .map(MessageSourceResolvable::getDefaultMessage)
+            .distinct()
+            .sorted()
+            .collect(Collectors.joining("; "));
+    return problem(ex, HttpStatus.UNPROCESSABLE_CONTENT, detail, headers, request);
   }
 
   private @Nullable ResponseEntity<Object> problem(

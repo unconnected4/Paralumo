@@ -1,27 +1,44 @@
 import { describe, it, expect } from 'vitest';
-import { lookup, listCards, saveCard, deleteCard, getMe, login, logout, register } from './client';
+import { http, HttpResponse } from 'msw';
+import { server } from '../test/setup';
+import {
+  lookup,
+  listCards,
+  listSavedSenses,
+  saveCard,
+  deleteCard,
+  getMe,
+  login,
+  logout,
+  register,
+} from './client';
 
 describe('API client (interim Step 0)', () => {
   it('lookup returns lexemes and senses for known word "run"', async () => {
     const res = await lookup('run');
     expect(res.query).toBe('run');
+    expect(res.source_lang).toBe('en');
+    expect(res.target_lang).toBe('ru');
     expect(res.lexemes.length).toBeGreaterThan(0);
 
     const verb = res.lexemes.find((l) => l.pos === 'verb');
     expect(verb).toBeDefined();
-    expect(verb?.senses[0].translation_ru).toBe('бежать');
+    expect(verb?.source_lang).toBe('en');
+    expect(verb?.senses[0].target_lang).toBe('ru');
+    expect(verb?.senses[0].translation).toBe('бежать');
+    expect(verb?.senses[0]).not.toHaveProperty('saved');
+    expect(verb?.senses[0]).not.toHaveProperty('card_id');
   });
 
-  it('lookup handles empty string gracefully', async () => {
+  it('lookup handles empty string gracefully, like the backend', async () => {
     const res = await lookup('   ');
-    expect(res.query).toBe('');
-    expect(res.lexemes).toEqual([]);
+    expect(res).toEqual({ query: '', source_lang: 'en', target_lang: 'ru', lexemes: [] });
   });
 
-  it('mock lookup matches the backend empty-query response for direct callers', async () => {
-    const response = await fetch(`${globalThis.location.origin}/api/dictionary/lookup?q=%20%20`);
-    expect(response.status).toBe(200);
-    await expect(response.json()).resolves.toEqual({ query: '', lexemes: [] });
+  it('lookup is the same signed in and signed out', async () => {
+    const signedIn = await lookup('run');
+    await logout();
+    expect(await lookup('run')).toEqual(signedIn);
   });
 
   it('mock 404 and malformed-body details match the backend wording', async () => {
@@ -44,16 +61,35 @@ describe('API client (interim Step 0)', () => {
     });
   });
 
-  it('lookup gives a saved sense the id of its card, and no card id to the others', async () => {
+  it('listSavedSenses gives the saved senses their card ids and leaves the others out', async () => {
     const [card] = await listCards();
-    const senses = (await lookup('run')).lexemes.flatMap((lexeme) => lexeme.senses);
+    const senseIds = (await lookup('run')).lexemes.flatMap((lexeme) => lexeme.senses.map((s) => s.id));
 
-    const saved = senses.filter((sense) => sense.saved);
-    expect(saved.map((sense) => sense.card_id)).toEqual([card.id]);
-    expect(saved[0].id).toBe(card.sense_id);
-    const unsaved = senses.filter((sense) => !sense.saved);
-    expect(unsaved.length).toBeGreaterThan(0);
-    expect(unsaved.every((sense) => sense.card_id === undefined)).toBe(true);
+    expect(await listSavedSenses([...senseIds, 'sense_unknown'])).toEqual([
+      { sense_id: card.sense_id, card_id: card.id },
+    ]);
+  });
+
+  it('listSavedSenses sends repeated sense_id parameters', async () => {
+    let query = '';
+    server.use(
+      http.get('/api/cards/saved', ({ request }) => {
+        query = new URL(request.url).search;
+        return HttpResponse.json([]);
+      })
+    );
+
+    await listSavedSenses(['s_a', 's_b']);
+    expect(query).toBe('?sense_id=s_a&sense_id=s_b');
+  });
+
+  it('listSavedSenses is 401 when signed out and 422 without ids, as in the backend', async () => {
+    await expect(listSavedSenses([])).rejects.toMatchObject({
+      status: 422,
+      message: 'sense_id is required',
+    });
+    await logout();
+    await expect(listSavedSenses(['sense_run_v_1'])).rejects.toMatchObject({ status: 401 });
   });
 
   it('listCards returns saved cards', async () => {
@@ -150,10 +186,8 @@ describe('API client (interim Step 0)', () => {
     const user2Cards = await listCards();
     expect(user2Cards).toEqual([]);
 
-    // Senses for User 2 show saved: false, and not User 1's card id
-    const lookupResUser2 = await lookup('run');
-    expect(lookupResUser2.lexemes[0].senses[0].saved).toBe(false);
-    expect(lookupResUser2.lexemes[0].senses[0].card_id).toBeUndefined();
+    // User 2 hasn't saved User 1's sense, and doesn't see User 1's card
+    expect(await listSavedSenses([user1Cards[0].sense_id])).toEqual([]);
 
     // User 2 saves bank
     await saveCard('sense_bank_n_1');

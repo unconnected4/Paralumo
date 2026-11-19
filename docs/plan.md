@@ -40,9 +40,9 @@ Scaffold `backend/` with Gradle, Spring Boot, DTO records, JPA entities and Flyw
 - **Handover from Step 0 (P24):** The Step 0 types and client functions in `web/src/api/` are the input for the backend's DTOs and controllers. Step 1 is done when the generated client replaces the interim module and `npm run typecheck` passes with pages, hooks and MSW handlers unchanged apart from imports.
 - **Auth contract from Step 0 differs from Spring Security defaults.** The web UI calls JSON `POST /api/auth/login` and `/api/auth/register` with `{email, password}`, `POST /api/auth/logout` and `GET /api/auth/me`; it expects `401` for an unknown email or wrong password, `409` for an existing email, and `{detail}` error bodies. Spring Security's form login takes form data (`username`, `password`) at `/login` and answers with redirects, it has no registration endpoint, and its errors aren't `{detail}` bodies. Because of the P24 handover condition, Step 1 either exposes the Step 0 shape (our own JSON controllers over Spring Security's `AuthenticationManager`) or changes `web/src/api/` and the MSW handlers deliberately, in the same commit, with the reason recorded.
 - `users`: id, email, password_hash, created_at. Auth uses Spring Security with one JWT carried in an httpOnly cookie (for web) or a bearer header (for Android).
-- `lexemes`: id, lemma, lang='en', pos, transcription. Unique on (lemma, pos).
-- `senses`: id, lexeme_id, source, source_key (matches the public `sense_id` string from Step 0), translation_ru, synonyms_ru[], meanings_en[], examples jsonb [{en, ru}].
-- `user_cards`: id, user_id, sense_id, **a copy of the sense data**, optional `notes` (text) and `custom_example` (text), `created_at`, `deleted_at` (soft delete to preserve review logs), plus SRS state (due_at, stability/interval, difficulty/ease, reps, lapses, state). Unique on `(user_id, sense_id)`. Re-saving a deleted card restores it (`deleted_at = NULL`), keeping its existing copied sense data, notes, custom examples, and FSRS state intact. Active card queries filter `deleted_at IS NULL` centrally in `service/CardService`.
+- `lexemes`: id, lemma, source_lang (ISO 639-1, `en` for now), pos, transcription. Unique on (source_lang, lemma, pos).
+- `senses`: id, lexeme_id, source, source_key (matches the public `sense_id` string from Step 0), target_lang (`ru` for now), translation, synonyms[], meanings[], examples jsonb [{text, translation}]. No language in column names (by Alex, root `intent.md`); `meanings` and the example `text` are in the source language, the rest in the target language.
+- `user_cards`: id, user_id, sense_id, **a copy of the sense data** (including source_lang and target_lang), optional `notes` (text) and `custom_example` (text), `created_at`, `deleted_at` (soft delete to preserve review logs), plus SRS state (due_at, stability/interval, difficulty/ease, reps, lapses, state). Unique on `(user_id, sense_id)`. Re-saving a deleted card restores it (`deleted_at = NULL`), keeping its existing copied sense data, notes, custom examples, and FSRS state intact. Active card queries filter `deleted_at IS NULL` centrally in `service/CardService`.
 - `review_logs`: card_id, reviewed_at, rating (1–4), source ('srs' | 'match_game'), previous and new state. Preserved even if a card is deleted so the algorithm can change or train without losing history.
 - `lookup_cache`: query and response json with a timestamp / TTL, used as a deduplicating cache. Quota throttling/rate limiting is handled as a separate mechanism if needed.
 - SRS algorithm: start with FSRS, wrapped in `service/SrsService` (library choice open, see `../backend/intent.md`).
@@ -50,11 +50,12 @@ Scaffold `backend/` with Gradle, Spring Boot, DTO records, JPA entities and Flyw
 ## Step 2 — Translator-dictionary
 Backend:
 - `provider/yandex/`: calls the lookup endpoint and turns the response (`def[] → tr[] → syn/mean/ex`) into our `Lexeme`/`Sense` structures.
-- `GET /api/dictionary/lookup?q=`: returns the lexemes and senses, each marked `saved: bool` for the current user; a saved sense also carries `card_id`, the user's card, so a client can unsave it.
+- `GET /api/dictionary/lookup?q=`: returns the lexemes and senses with their language annotations (`source_lang` on the lexeme, `target_lang` on the sense). It is the same for every user and publicly cacheable (`Cache-Control: public`), so a reverse proxy can cache it (by Alex, root `intent.md`).
+- `GET /api/cards/saved?sense_id=…&sense_id=…`: which of a lookup's senses the signed-in user has saved, as `[{sense_id, card_id}]`; the `card_id` is what unsaving needs. 1 to 100 ids, otherwise 422; 401 when signed out.
 - `POST /api/cards {sense_id}`, `DELETE /api/cards/{id}`, `GET /api/cards` (the user's vocabulary list).
 
 Web:
-- Login/register pages, a search box, results grouped by part of speech, and one sense card each (Russian translation, synonyms, English meanings, examples) with a "+" button that shows ✓ once saved; clicking ✓ unsaves. Plus a "My words" list page.
+- Login/register pages, a search box, results grouped by part of speech, and one sense card each (Russian translation, synonyms, English meanings, examples) with a "+" button that shows ✓ once saved; clicking ✓ unsaves. The buttons are inactive until the saved state arrives (signed in only). Plus a "My words" list page.
 - Audio pronunciation: Web Speech API (`speechSynthesis`) is primary audio, feature-detected (`'speechSynthesis' in window`) to hide when unsupported.
 - Show the Yandex credit line if the terms require it.
 

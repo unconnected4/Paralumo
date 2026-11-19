@@ -2,6 +2,7 @@ package com.paralumo.provider.fake;
 
 import com.paralumo.provider.DictionaryProvider;
 import com.paralumo.provider.ExampleSentence;
+import com.paralumo.provider.LanguagePair;
 import com.paralumo.provider.ProviderLexeme;
 import com.paralumo.provider.ProviderSense;
 import com.paralumo.provider.SenseIds;
@@ -28,6 +29,9 @@ public final class FakeDictionaryProvider implements DictionaryProvider {
 
   static final String SOURCE = "fake";
 
+  /** The only pair the fake data covers. */
+  static final LanguagePair PAIR = new LanguagePair("en", "ru");
+
   private final Map<String, List<ProviderLexeme>> entries;
 
   private FakeDictionaryProvider(Map<String, List<ProviderLexeme>> entries) {
@@ -36,7 +40,7 @@ public final class FakeDictionaryProvider implements DictionaryProvider {
 
   /** Loads every file under {@code classpath:fake-data/}; a malformed file stops startup. */
   public static FakeDictionaryProvider fromClasspath() {
-    // Same field names as the API (translation_ru, ...), so the files read like lookup responses.
+    // Same field names as the API (translation, ...), so the files read like lookup responses.
     JsonMapper json =
         JsonMapper.builder().propertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE).build();
     Map<String, List<ProviderLexeme>> entries = new HashMap<>();
@@ -66,6 +70,11 @@ public final class FakeDictionaryProvider implements DictionaryProvider {
   }
 
   @Override
+  public LanguagePair pair() {
+    return PAIR;
+  }
+
+  @Override
   public Optional<List<ProviderLexeme>> lookup(String query) {
     return Optional.ofNullable(entries.get(query));
   }
@@ -84,17 +93,21 @@ public final class FakeDictionaryProvider implements DictionaryProvider {
                             sense -> {
                               String id =
                                   SenseIds.of(
-                                      SOURCE, lexeme.lemma(), lexeme.pos(), sense.translationRu());
+                                      SOURCE,
+                                      PAIR,
+                                      lexeme.lemma(),
+                                      lexeme.pos(),
+                                      sense.translation());
                               if (!ids.add(id)) {
                                 throw new IllegalStateException(
                                     "fake-data/%s.json: two %s senses translate as \"%s\""
-                                        .formatted(word, lexeme.pos(), sense.translationRu()));
+                                        .formatted(word, lexeme.pos(), sense.translation()));
                               }
                               return new ProviderSense(
                                   id,
-                                  sense.translationRu(),
-                                  sense.synonymsRu(),
-                                  sense.meaningsEn(),
+                                  sense.translation(),
+                                  sense.synonyms(),
+                                  sense.meanings(),
                                   sense.examples());
                             })
                         .toList()))
@@ -106,8 +119,8 @@ public final class FakeDictionaryProvider implements DictionaryProvider {
       String lemma, String pos, @Nullable String transcription, List<FakeSense> senses) {}
 
   record FakeSense(
-      String translationRu,
-      List<String> synonymsRu,
-      List<String> meaningsEn,
+      String translation,
+      List<String> synonyms,
+      List<String> meanings,
       List<ExampleSentence> examples) {}
 }

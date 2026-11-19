@@ -117,12 +117,85 @@ describe('Paralumo App', () => {
 
     expect(await screen.findByText('бежать')).toBeInTheDocument();
     expect(window.location.search).toBe('?q=run');
-    // The lookup was cached while signed out; signing in refetches it with this user's saved flags.
+    // The lookup stays cached across sign-in; the saved state is fetched for the new user.
     expect(await screen.findByText('Saved')).toBeInTheDocument();
+  });
+
+  it('keeps the buttons inactive until the saved state arrives', async () => {
+    let answer: () => void = () => {};
+    const answered = new Promise<void>((resolve) => {
+      answer = resolve;
+    });
+    server.use(
+      // Returning nothing falls through to the default mock handler.
+      http.get('/api/cards/saved', async () => {
+        await answered;
+      })
+    );
+    window.history.pushState({}, '', '/?q=run');
+    render(<App />);
+
+    expect(await screen.findByText('бежать')).toBeInTheDocument();
+    const inactive = screen.getAllByRole('button', { name: 'Checking saved state' });
+    expect(inactive).toHaveLength(5);
+    inactive.forEach((button) => expect(button).toBeDisabled());
+    expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Saved' })).not.toBeInTheDocument();
+
+    answer();
+
+    expect(await screen.findByRole('button', { name: 'Saved' })).toBeEnabled();
+    expect(screen.getAllByRole('button', { name: 'Save' })).toHaveLength(4);
+    expect(screen.queryByRole('button', { name: 'Checking saved state' })).not.toBeInTheDocument();
+  });
+
+  it('never requests saved state when signed out, and offers an active Save at once', async () => {
+    const savedStateRequests: string[] = [];
+    server.events.on('request:start', ({ request }) => {
+      if (new URL(request.url).pathname === '/api/cards/saved') savedStateRequests.push(request.url);
+    });
+    await logout();
+    window.history.pushState({}, '', '/?q=run');
+    render(<App />);
+
+    const saveButtons = await screen.findAllByRole('button', { name: 'Save' });
+    expect(saveButtons).toHaveLength(5);
+    saveButtons.forEach((button) => expect(button).toBeEnabled());
+    expect(screen.queryByRole('button', { name: 'Checking saved state' })).not.toBeInTheDocument();
+    expect(savedStateRequests).toEqual([]);
+    server.events.removeAllListeners();
+  });
+
+  it('shows a retry message when the saved state fails, and recovers on retry', async () => {
+    const user = userEvent.setup();
+    let failing = true;
+    server.use(
+      http.get('/api/cards/saved', () =>
+        failing ? HttpResponse.json({ detail: 'Database unavailable' }, { status: 503 }) : undefined
+      )
+    );
+    window.history.pushState({}, '', '/?q=run');
+    render(<App />);
+
+    const alert = await screen.findByRole('alert', {}, { timeout: 5000 });
+    expect(alert).toHaveTextContent("Couldn't check which senses you have saved.");
+    // The translation stays visible and the buttons stay inactive.
+    expect(screen.getByText('бежать')).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: 'Checking saved state' })).toHaveLength(5);
+
+    failing = false;
+    await user.click(screen.getByRole('button', { name: 'Retry' }));
+
+    expect(await screen.findByRole('button', { name: 'Saved' })).toBeEnabled();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 
   it('unsaves a saved sense from the search page and saves it again', async () => {
     const user = userEvent.setup();
+    const requests: string[] = [];
+    server.events.on('request:start', ({ request }) => {
+      requests.push(new URL(request.url).pathname);
+    });
     window.history.pushState({}, '', '/?q=run');
     render(<App />);
 
@@ -138,6 +211,10 @@ describe('Paralumo App', () => {
 
     expect(await screen.findByRole('button', { name: 'Saved' })).toBeInTheDocument();
     expect(await listCards()).toHaveLength(1);
+    // Saving and unsaving update the saved state in place: no second lookup or saved-state request.
+    expect(requests.filter((path) => path === '/api/dictionary/lookup')).toHaveLength(1);
+    expect(requests.filter((path) => path === '/api/cards/saved')).toHaveLength(1);
+    server.events.removeAllListeners();
   });
 
   it('does not show mock-only labels in the UI', async () => {

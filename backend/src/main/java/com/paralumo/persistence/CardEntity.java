@@ -27,6 +27,12 @@ public class CardEntity {
   @Column(name = "sense_key", nullable = false)
   private String senseKey;
 
+  @Column(name = "source_lang", nullable = false)
+  private String sourceLang;
+
+  @Column(name = "target_lang", nullable = false)
+  private String targetLang;
+
   @Column(nullable = false)
   private String lemma;
 
@@ -35,16 +41,16 @@ public class CardEntity {
 
   private @Nullable String transcription;
 
-  @Column(name = "translation_ru", nullable = false)
-  private String translationRu;
+  @Column(nullable = false)
+  private String translation;
 
   @JdbcTypeCode(SqlTypes.ARRAY)
-  @Column(name = "synonyms_ru", nullable = false)
-  private List<String> synonymsRu;
+  @Column(nullable = false)
+  private List<String> synonyms;
 
   @JdbcTypeCode(SqlTypes.ARRAY)
-  @Column(name = "meanings_en", nullable = false)
-  private List<String> meaningsEn;
+  @Column(nullable = false)
+  private List<String> meanings;
 
   @JdbcTypeCode(SqlTypes.JSON)
   @Column(nullable = false)
@@ -71,12 +77,14 @@ public class CardEntity {
     this.userId = userId;
     this.senseId = senseId;
     this.senseKey = sense.getSourceKey();
+    this.sourceLang = lexeme.getSourceLang();
+    this.targetLang = sense.getTargetLang();
     this.lemma = lexeme.getLemma();
     this.pos = lexeme.getPos();
     this.transcription = lexeme.getTranscription();
-    this.translationRu = sense.getTranslationRu();
-    this.synonymsRu = List.copyOf(sense.getSynonymsRu());
-    this.meaningsEn = List.copyOf(sense.getMeaningsEn());
+    this.translation = sense.getTranslation();
+    this.synonyms = List.copyOf(sense.getSynonyms());
+    this.meanings = List.copyOf(sense.getMeanings());
     this.examples = List.copyOf(sense.getExamples());
     this.createdAt = createdAt;
   }
@@ -105,6 +113,14 @@ public class CardEntity {
     return senseKey;
   }
 
+  public String getSourceLang() {
+    return sourceLang;
+  }
+
+  public String getTargetLang() {
+    return targetLang;
+  }
+
   public String getLemma() {
     return lemma;
   }
@@ -117,16 +133,16 @@ public class CardEntity {
     return transcription;
   }
 
-  public String getTranslationRu() {
-    return translationRu;
+  public String getTranslation() {
+    return translation;
   }
 
-  public List<String> getSynonymsRu() {
-    return synonymsRu;
+  public List<String> getSynonyms() {
+    return synonyms;
   }
 
-  public List<String> getMeaningsEn() {
-    return meaningsEn;
+  public List<String> getMeanings() {
+    return meanings;
   }
 
   public List<Example> getExamples() {

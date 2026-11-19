@@ -1,4 +1,4 @@
 package com.paralumo.provider;
 
-/** An English example sentence and its Russian translation. */
-public record ExampleSentence(String en, String ru) {}
+/** An example sentence in the source language and its translation into the target language. */
+public record ExampleSentence(String text, String translation) {}

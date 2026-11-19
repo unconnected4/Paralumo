@@ -5,5 +5,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface LexemeRepository extends JpaRepository<LexemeEntity, Long> {
 
-  Optional<LexemeEntity> findByLemmaAndPos(String lemma, String pos);
+  Optional<LexemeEntity> findBySourceLangAndLemmaAndPos(
+      String sourceLang, String lemma, String pos);
 }

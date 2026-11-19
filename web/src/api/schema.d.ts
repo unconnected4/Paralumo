@@ -93,6 +93,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/cards/saved": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Which of the given senses the user has saved
+         * @description One entry per saved sense, in no particular order; senses that aren't saved, including unknown ones, are left out. Pass the sense ids of a lookup.
+         */
+        get: operations["listSavedSenses"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/cards/{cardId}": {
         parameters: {
             query?: never;
@@ -119,7 +139,7 @@ export interface paths {
         };
         /**
          * Look up an English word
-         * @description An empty query returns no lexemes. `saved` and `card_id` reflect the signed-in user.
+         * @description An empty query returns no lexemes. The response is the same for every user and is publicly cacheable; GET /api/cards/saved tells which senses the user saved.
          */
         get: operations["lookup"];
         put?: never;
@@ -174,23 +194,40 @@ export interface components {
             examples?: components["schemas"]["ExampleSentence"][];
             id: string;
             lemma: string;
-            meanings_en?: string[];
+            meanings?: string[];
             notes?: string;
             pos: string;
             sense_id: string;
-            synonyms_ru?: string[];
+            /**
+             * @description Language of the lemma, transcription, meanings and example texts (ISO 639-1)
+             * @example en
+             */
+            source_lang: string;
+            synonyms?: string[];
+            /**
+             * @description Language of the translation, synonyms and example translations (ISO 639-1)
+             * @example ru
+             */
+            target_lang: string;
             transcription?: string;
-            translation_ru: string;
+            translation: string;
         };
         ExampleSentence: {
-            en: string;
-            ru: string;
+            /** @description In the source language */
+            text: string;
+            /** @description In the target language */
+            translation: string;
         };
         Lexeme: {
             lemma: string;
             /** @example verb */
             pos: string;
             senses: components["schemas"]["Sense"][];
+            /**
+             * @description Language of the lemma, transcription, meanings and example texts (ISO 639-1)
+             * @example en
+             */
+            source_lang: string;
             transcription?: string;
         };
         LoginRequest: {
@@ -200,6 +237,13 @@ export interface components {
         LookupResponse: {
             lexemes: components["schemas"]["Lexeme"][];
             query: string;
+            /**
+             * @description The pair this lookup used; each lexeme and sense also says its own
+             * @example en
+             */
+            source_lang: string;
+            /** @example ru */
+            target_lang: string;
         };
         /** @description RFC 9457 problem details */
         Problem: {
@@ -219,17 +263,23 @@ export interface components {
         SaveCardRequest: {
             sense_id: string;
         };
+        SavedSense: {
+            /** @description The user's card; pass it to DELETE /api/cards/{cardId} to unsave */
+            card_id: string;
+            sense_id: string;
+        };
         Sense: {
-            /** @description The current user's card for this sense, present exactly when `saved` is true; pass it to DELETE /api/cards/{cardId} to unsave */
-            card_id?: string;
             examples?: components["schemas"]["ExampleSentence"][];
             /** @description Opaque sense id; pass it to POST /api/cards */
             id: string;
-            meanings_en?: string[];
-            /** @description Whether the current user has saved this sense (false when signed out) */
-            saved: boolean;
-            synonyms_ru?: string[];
-            translation_ru: string;
+            meanings?: string[];
+            synonyms?: string[];
+            /**
+             * @description Language of the translation, synonyms and example translations (ISO 639-1)
+             * @example ru
+             */
+            target_lang: string;
+            translation: string;
         };
         User: {
             email: string;
@@ -454,6 +504,46 @@ export interface operations {
                 };
             };
             /** @description Missing sense_id */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    listSavedSenses: {
+        parameters: {
+            query: {
+                sense_id: string[];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The saved senses with their cards */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SavedSense"][];
+                };
+            };
+            /** @description Not signed in */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description No sense_id, more than 100, or a blank one */
             422: {
                 headers: {
                     [name: string]: unknown;

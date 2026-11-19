@@ -247,6 +247,62 @@
         "tags" : [ "card-controller" ]
       }
     },
+    "/api/cards/saved" : {
+      "get" : {
+        "description" : "One entry per saved sense, in no particular order; senses that aren't saved, including unknown ones, are left out. Pass the sense ids of a lookup.",
+        "operationId" : "listSavedSenses",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "sense_id",
+          "required" : true,
+          "schema" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            },
+            "maxItems" : 100,
+            "minItems" : 1
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/SavedSense"
+                  }
+                }
+              }
+            },
+            "description" : "The saved senses with their cards"
+          },
+          "401" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Not signed in"
+          },
+          "422" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "No sense_id, more than 100, or a blank one"
+          }
+        },
+        "summary" : "Which of the given senses the user has saved",
+        "tags" : [ "card-controller" ]
+      }
+    },
     "/api/cards/{cardId}" : {
       "delete" : {
         "operationId" : "deleteCard",
@@ -289,7 +345,7 @@
     },
     "/api/dictionary/lookup" : {
       "get" : {
-        "description" : "An empty query returns no lexemes. `saved` and `card_id` reflect the signed-in user.",
+        "description" : "An empty query returns no lexemes. The response is the same for every user and is publicly cacheable; GET /api/cards/saved tells which senses the user saved.",
         "operationId" : "lookup",
         "parameters" : [ {
           "in" : "query",
@@ -401,7 +457,7 @@
           "lemma" : {
             "type" : "string"
           },
-          "meanings_en" : {
+          "meanings" : {
             "type" : "array",
             "items" : {
               "type" : "string"
@@ -416,31 +472,43 @@
           "sense_id" : {
             "type" : "string"
           },
-          "synonyms_ru" : {
+          "source_lang" : {
+            "type" : "string",
+            "description" : "Language of the lemma, transcription, meanings and example texts (ISO 639-1)",
+            "example" : "en"
+          },
+          "synonyms" : {
             "type" : "array",
             "items" : {
               "type" : "string"
             }
           },
+          "target_lang" : {
+            "type" : "string",
+            "description" : "Language of the translation, synonyms and example translations (ISO 639-1)",
+            "example" : "ru"
+          },
           "transcription" : {
             "type" : "string"
           },
-          "translation_ru" : {
+          "translation" : {
             "type" : "string"
           }
         },
-        "required" : [ "created_at", "id", "lemma", "pos", "sense_id", "translation_ru" ]
+        "required" : [ "created_at", "id", "lemma", "pos", "sense_id", "source_lang", "target_lang", "translation" ]
       },
       "ExampleSentence" : {
         "properties" : {
-          "en" : {
-            "type" : "string"
+          "text" : {
+            "type" : "string",
+            "description" : "In the source language"
           },
-          "ru" : {
-            "type" : "string"
+          "translation" : {
+            "type" : "string",
+            "description" : "In the target language"
           }
         },
-        "required" : [ "en", "ru" ]
+        "required" : [ "text", "translation" ]
       },
       "Lexeme" : {
         "properties" : {
@@ -457,11 +525,16 @@
               "$ref" : "#/components/schemas/Sense"
             }
           },
+          "source_lang" : {
+            "type" : "string",
+            "description" : "Language of the lemma, transcription, meanings and example texts (ISO 639-1)",
+            "example" : "en"
+          },
           "transcription" : {
             "type" : "string"
           }
         },
-        "required" : [ "lemma", "pos", "senses" ]
+        "required" : [ "lemma", "pos", "senses", "source_lang" ]
       },
       "LoginRequest" : {
         "properties" : {
@@ -486,9 +559,18 @@
           },
           "query" : {
             "type" : "string"
+          },
+          "source_lang" : {
+            "type" : "string",
+            "description" : "The pair this lookup used; each lexeme and sense also says its own",
+            "example" : "en"
+          },
+          "target_lang" : {
+            "type" : "string",
+            "example" : "ru"
           }
         },
-        "required" : [ "lexemes", "query" ]
+        "required" : [ "lexemes", "query", "source_lang", "target_lang" ]
       },
       "Problem" : {
         "type" : "object",
@@ -538,12 +620,20 @@
         },
         "required" : [ "sense_id" ]
       },
-      "Sense" : {
+      "SavedSense" : {
         "properties" : {
           "card_id" : {
             "type" : "string",
-            "description" : "The current user's card for this sense, present exactly when `saved` is true; pass it to DELETE /api/cards/{cardId} to unsave"
+            "description" : "The user's card; pass it to DELETE /api/cards/{cardId} to unsave"
           },
+          "sense_id" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "card_id", "sense_id" ]
+      },
+      "Sense" : {
+        "properties" : {
           "examples" : {
             "type" : "array",
             "items" : {
@@ -554,27 +644,28 @@
             "type" : "string",
             "description" : "Opaque sense id; pass it to POST /api/cards"
           },
-          "meanings_en" : {
+          "meanings" : {
             "type" : "array",
             "items" : {
               "type" : "string"
             }
           },
-          "saved" : {
-            "type" : "boolean",
-            "description" : "Whether the current user has saved this sense (false when signed out)"
-          },
-          "synonyms_ru" : {
+          "synonyms" : {
             "type" : "array",
             "items" : {
               "type" : "string"
             }
           },
-          "translation_ru" : {
+          "target_lang" : {
+            "type" : "string",
+            "description" : "Language of the translation, synonyms and example translations (ISO 639-1)",
+            "example" : "ru"
+          },
+          "translation" : {
             "type" : "string"
           }
         },
-        "required" : [ "id", "saved", "translation_ru" ]
+        "required" : [ "id", "target_lang", "translation" ]
       },
       "User" : {
         "properties" : {

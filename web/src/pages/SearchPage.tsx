@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router';
-import { Search as SearchIcon, X, AlertCircle, Sparkles, Loader2 } from 'lucide-react';
+import { Search as SearchIcon, X, AlertCircle, Sparkles, Loader2, RotateCw } from 'lucide-react';
 import { useLookup } from '../hooks/useDictionary';
-import { useCards } from '../hooks/useCards';
+import { useCards, useSavedSenses } from '../hooks/useCards';
 import { useAuth } from '../hooks/useAuth';
 import { SenseCard } from '../components/SenseCard';
 import { AudioButton } from '../components/AudioButton';
@@ -72,7 +72,7 @@ export function SearchPage() {
 
   const { data, isLoading, isError, error } = useLookup(activeQuery);
   const { saveCard, isSaving, savingSenseId, deleteCard, isDeleting, deletingCardId } = useCards();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -93,6 +93,13 @@ export function SearchPage() {
 
   const lexemes = data?.lexemes || [];
   const primaryTranscription = lexemes.find((l) => l.transcription)?.transcription;
+
+  // Saved state is a second request, made once the lookup has answered and only when signed in.
+  // Until it arrives the buttons are inactive; signed-out users get an active '+' straight away.
+  const senseIds = lexemes.flatMap((l) => l.senses.map((s) => s.id));
+  const savedState = useSavedSenses(senseIds);
+  const isCheckingSaved = isAuthLoading || (isAuthenticated && savedState.savedCardIds === undefined);
+  const cardIdOf = (senseId: string) => savedState.savedCardIds?.[senseId] ?? undefined;
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8 space-y-8">
@@ -176,6 +183,24 @@ export function SearchPage() {
             </span>
           </div>
 
+          {isAuthenticated && savedState.isError && savedState.savedCardIds === undefined && (
+            <div
+              role="alert"
+              className="flex items-center justify-between gap-3 px-4 py-2.5 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-800"
+            >
+              <span>Couldn't check which senses you have saved.</span>
+              <button
+                type="button"
+                onClick={savedState.retry}
+                disabled={savedState.isRetrying}
+                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg font-semibold bg-white border border-amber-300 hover:bg-amber-100 transition-colors disabled:opacity-60"
+              >
+                <RotateCw className={`w-3.5 h-3.5 ${savedState.isRetrying ? 'animate-spin' : ''}`} />
+                Retry
+              </button>
+            </div>
+          )}
+
           {/* Senses grouped by Part of Speech */}
           <div className="space-y-8">
             {lexemes.map((lexeme) => (
@@ -194,10 +219,12 @@ export function SearchPage() {
                     <SenseCard
                       key={sense.id}
                       sense={sense}
+                      cardId={cardIdOf(sense.id)}
+                      isCheckingSaved={isCheckingSaved}
                       onSave={handleSave}
                       onUnsave={deleteCard}
                       isSaving={isSaving && savingSenseId === sense.id}
-                      isRemoving={isDeleting && deletingCardId === sense.card_id}
+                      isRemoving={isDeleting && deletingCardId !== undefined && deletingCardId === cardIdOf(sense.id)}
                     />
                   ))}
                 </div>

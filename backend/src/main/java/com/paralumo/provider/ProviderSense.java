@@ -3,20 +3,21 @@ package com.paralumo.provider;
 import java.util.List;
 
 /**
- * One meaning of a lexeme with its Russian translation.
+ * One meaning of a lexeme with its translation. Translation and synonyms are in the provider's
+ * target language, meanings in its source language.
  *
  * @param id the public, opaque sense id, computed with {@link SenseIds}
  */
 public record ProviderSense(
     String id,
-    String translationRu,
-    List<String> synonymsRu,
-    List<String> meaningsEn,
+    String translation,
+    List<String> synonyms,
+    List<String> meanings,
     List<ExampleSentence> examples) {
 
   public ProviderSense {
-    synonymsRu = List.copyOf(synonymsRu);
-    meaningsEn = List.copyOf(meaningsEn);
+    synonyms = List.copyOf(synonyms);
+    meanings = List.copyOf(meanings);
     examples = List.copyOf(examples);
   }
 }

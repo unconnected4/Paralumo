@@ -20,31 +20,31 @@ final class Dtos {
 
   private Dtos() {}
 
+  private static final String SOURCE_LANG =
+      "Language of the lemma, transcription, meanings and example texts (ISO 639-1)";
+  private static final String TARGET_LANG =
+      "Language of the translation, synonyms and example translations (ISO 639-1)";
+
   @Schema(name = "ExampleSentence")
   record ExampleSentenceDto(
-      @Schema(requiredMode = REQUIRED) String en, @Schema(requiredMode = REQUIRED) String ru) {}
+      @Schema(requiredMode = REQUIRED, description = "In the source language") String text,
+      @Schema(requiredMode = REQUIRED, description = "In the target language")
+          String translation) {}
 
   @Schema(name = "Sense")
   record SenseDto(
       @Schema(requiredMode = REQUIRED, description = "Opaque sense id; pass it to POST /api/cards")
           String id,
-      @Schema(requiredMode = REQUIRED) String translationRu,
-      List<String> synonymsRu,
-      List<String> meaningsEn,
-      List<ExampleSentenceDto> examples,
-      @Schema(
-              requiredMode = REQUIRED,
-              description = "Whether the current user has saved this sense (false when signed out)")
-          boolean saved,
-      @Schema(
-              description =
-                  "The current user's card for this sense, present exactly when `saved` is true;"
-                      + " pass it to DELETE /api/cards/{cardId} to unsave")
-          @Nullable String cardId) {}
+      @Schema(requiredMode = REQUIRED, example = "ru", description = TARGET_LANG) String targetLang,
+      @Schema(requiredMode = REQUIRED) String translation,
+      List<String> synonyms,
+      List<String> meanings,
+      List<ExampleSentenceDto> examples) {}
 
   @Schema(name = "Lexeme")
   record LexemeDto(
       @Schema(requiredMode = REQUIRED) String lemma,
+      @Schema(requiredMode = REQUIRED, example = "en", description = SOURCE_LANG) String sourceLang,
       @Schema(requiredMode = REQUIRED, example = "verb") String pos,
       @Nullable String transcription,
       @Schema(requiredMode = REQUIRED) List<SenseDto> senses) {}
@@ -52,18 +52,34 @@ final class Dtos {
   @Schema(name = "LookupResponse")
   record LookupResponse(
       @Schema(requiredMode = REQUIRED) String query,
+      @Schema(
+              requiredMode = REQUIRED,
+              example = "en",
+              description = "The pair this lookup used; each lexeme and sense also says its own")
+          String sourceLang,
+      @Schema(requiredMode = REQUIRED, example = "ru") String targetLang,
       @Schema(requiredMode = REQUIRED) List<LexemeDto> lexemes) {}
+
+  @Schema(name = "SavedSense")
+  record SavedSenseDto(
+      @Schema(requiredMode = REQUIRED) String senseId,
+      @Schema(
+              requiredMode = REQUIRED,
+              description = "The user's card; pass it to DELETE /api/cards/{cardId} to unsave")
+          String cardId) {}
 
   @Schema(name = "Card")
   record CardDto(
       @Schema(requiredMode = REQUIRED) String id,
       @Schema(requiredMode = REQUIRED) String senseId,
+      @Schema(requiredMode = REQUIRED, example = "en", description = SOURCE_LANG) String sourceLang,
+      @Schema(requiredMode = REQUIRED, example = "ru", description = TARGET_LANG) String targetLang,
       @Schema(requiredMode = REQUIRED) String lemma,
       @Schema(requiredMode = REQUIRED) String pos,
       @Nullable String transcription,
-      @Schema(requiredMode = REQUIRED) String translationRu,
-      List<String> synonymsRu,
-      List<String> meaningsEn,
+      @Schema(requiredMode = REQUIRED) String translation,
+      List<String> synonyms,
+      List<String> meanings,
       List<ExampleSentenceDto> examples,
       @Schema(requiredMode = REQUIRED) Instant createdAt,
       @Nullable String notes) {}

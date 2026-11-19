@@ -21,9 +21,9 @@ export function MyWordsPage() {
     const q = filterQuery.toLowerCase();
     return (
       card.lemma.toLowerCase().includes(q) ||
-      card.translation_ru.toLowerCase().includes(q) ||
-      (card.synonyms_ru && card.synonyms_ru.some((s) => s.toLowerCase().includes(q))) ||
-      (card.meanings_en && card.meanings_en.some((m) => m.toLowerCase().includes(q)))
+      card.translation.toLowerCase().includes(q) ||
+      (card.synonyms && card.synonyms.some((s) => s.toLowerCase().includes(q))) ||
+      (card.meanings && card.meanings.some((m) => m.toLowerCase().includes(q)))
     );
   });
 
@@ -110,7 +110,7 @@ export function MyWordsPage() {
                 className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs hover:border-slate-300 transition-all flex flex-col sm:flex-row sm:items-start justify-between gap-4"
               >
                 <div className="flex-1 min-w-0 space-y-2">
-                  {/* English lemma & POS */}
+                  {/* Lemma & POS */}
                   <div className="flex items-baseline gap-2.5 flex-wrap">
                     <span className="text-xl font-bold text-slate-900">{card.lemma}</span>
                     <span className="px-2 py-0.5 rounded-sm text-[11px] font-bold uppercase tracking-wider bg-slate-100 text-slate-700">
@@ -122,22 +122,22 @@ export function MyWordsPage() {
                     <AudioButton text={card.lemma} className="ml-1" />
                   </div>
 
-                  {/* Russian translation & synonyms */}
+                  {/* Translation & synonyms */}
                   <div className="flex items-baseline gap-2 flex-wrap">
                     <span className="text-base font-semibold text-emerald-800">
-                      {card.translation_ru}
+                      {card.translation}
                     </span>
-                    {card.synonyms_ru && card.synonyms_ru.length > 0 && (
+                    {card.synonyms && card.synonyms.length > 0 && (
                       <span className="text-xs text-slate-500">
-                        ({card.synonyms_ru.join(', ')})
+                        ({card.synonyms.join(', ')})
                       </span>
                     )}
                   </div>
 
-                  {/* English meanings */}
-                  {card.meanings_en && card.meanings_en.length > 0 && (
+                  {/* Meanings */}
+                  {card.meanings && card.meanings.length > 0 && (
                     <p className="text-xs text-slate-600 italic">
-                      {card.meanings_en.join('; ')}
+                      {card.meanings.join('; ')}
                     </p>
                   )}
 
@@ -146,8 +146,8 @@ export function MyWordsPage() {
                     <div className="mt-2 text-xs space-y-1 pl-3 border-l-2 border-indigo-200">
                       {card.examples.map((ex, idx) => (
                         <div key={idx}>
-                          <p className="text-slate-800 font-medium">{ex.en}</p>
-                          <p className="text-slate-500">{ex.ru}</p>
+                          <p className="text-slate-800 font-medium">{ex.text}</p>
+                          <p className="text-slate-500">{ex.translation}</p>
                         </div>
                       ))}
                     </div>

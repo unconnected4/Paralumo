@@ -1,12 +1,12 @@
 ---
 task: feedback-amendments
 title: Apply Alex's feedback F1–F3 - agree the contract first, then implement it
-status: in-progress
+status: ready-for-review
 phase: implementation             # contract | implementation; switched only by the reviewer (see Goal)
 branch: main
 started: 2026-11-18T11:38:37Z
-last_updated: 2026-11-19T11:00:00Z
-last_commit: 3e4e000
+last_updated: 2026-11-19T11:30:00Z
+last_commit: e33c4b0
 agents: [Claude-Opus5.5-Interactive, ClaudeC-Opus5.5, AgyC-Gemini4Argon, CodexC-GPT5.6Terra, MuseC-Spark1.3, ClaudeC-Fable]
 related_decisions: [intent.md, docs/api/proposals/feedback-amendments.md, backend/intent.md, web/intent.md, docs/plan.md]
 ---
@@ -64,7 +64,7 @@ Implement the agreed proposal exactly.
 - Backend `./gradlew check` and web lint, typecheck, tests and build pass with no warnings. If `e2e/` has tests by then, they pass too.
 
 ## Current state
-Phase 2 (`implementation`) starts. The reviewer (ClaudeC-Fable) confirmed the contract at the end of phase 1 cycle 2: the proposal's Status is now `agreed`, and it changes only with a reason recorded here. The reviewer added four clarifications to the proposal (Decisions below); none changes the agreed behaviour. Nothing in `backend/`, `web/`, `e2e/` or `docs/api/openapi.json` has changed yet. Implementers: work through Next step in order.
+Phase 2 (`implementation`). The whole agreed proposal is implemented in one commit by ClaudeC-Opus5.5 (phase 2, round 1): backend (V2 migration, neutral names, `LanguagePair`, user-independent cacheable lookup, `GET /api/cards/saved`), re-exported `docs/api/openapi.json` and regenerated `web/src/api/schema.d.ts`, the web (neutral names, lookup-then-saved-state, inactive buttons, retry state, signed-out behaviour, MSW) and the section 5 docs. The proposal itself is unchanged. Backend `./gradlew check --rerun-tasks` (69 tests) and web lint, typecheck, 34 tests and build pass with no warnings. Remaining implementers: verify against the proposal and the acceptance list in Goal.
 
 ## Contract agreement
 <!-- Phase 1 only. One line per implementer per cycle: "- <agent>, cycle <n>: agree (<remarks>)". A proposal change after a line makes earlier lines stale; agreement then starts over. -->
@@ -87,8 +87,16 @@ Phase 2 (`implementation`) starts. The reviewer (ClaudeC-Fable) confirmed the co
 - Cycle 2, MuseC-Spark1.3: verified the proposal against the framework sources in the Gradle cache, `backend/src`, `web/src` and `docs/api/openapi.json`, found no change needed, and recorded agreement. Web lint, typecheck, 28 tests and build pass; backend `./gradlew check` not re-run (handoff-only change; no `docker` or `JAVA_HOME` in this session).
 - Cycle 2, ClaudeC-Opus5.5: re-checked the proposal against the schema, controllers and web hooks, found no change needed, and recorded agreement. That completes the cycle 2 streak.
 - Phase 1 review, ClaudeC-Fable: checked the proposal against F1–F3 as Alex stated them (archived `alex-feedback` handoff), `intent.md`, `backend/AGENTS.md`, `web/AGENTS.md`, `docs/engineering.md`, the backend API/service/persistence/provider/security code and tests, the web client, hooks, pages, mocks and tests, and the Spring 7.0.10 sources. Found it complete, consistent and implementable. Added four clarifications to the proposal (no behaviour change; Decisions below), marked it `agreed`, and switched the task to phase 2. Web lint, typecheck, 28 tests and build pass; backend `./gradlew check --rerun-tasks` passes with the portable toolchain (see Tried and rejected for the Postgres restart).
+- Phase 2, ClaudeC-Opus5.5 (items 1–5 of the phase 2 list):
+  - Backend: `V2__language_neutral_columns.sql`; `LanguagePair` and `DictionaryProvider.pair()`; neutral names in the provider records, entities, DTOs, `SenseCatalog` and fake data; the pair in `SenseIds`; `LookupService` without `CardService`; `DictionaryController` returning `ResponseEntity` with the 200 and lookup-only 404 cache headers; `GET /api/cards/saved` (`listSavedSenses`, `SavedSense`) on `CardController` without `@Validated`; the two 422 overrides in `ApiExceptionHandler`.
+  - Backend tests: renames in `DictionaryApiTest`, `CardApiTest` (raw insert supplies both language columns; the saved/card_id assertions now read `GET /api/cards/saved`), `FakeDictionaryProviderTest` and `SenseIdsTest`; new cache-header and same-response tests in `DictionaryApiTest`; new `SavedSensesApiTest` (saved/unsaved/deleted/unknown/duplicate ids, 100-id limit, no-store, 422 cases, 401 before 422, per-user isolation). `OpenApiContractTest` needed no change.
+  - `docs/api/openapi.json` re-exported, `web/src/api/schema.d.ts` regenerated.
+  - Web: `SavedSense` type and `listSavedSenses` client; `useSavedSenses`; `useCards` and `useAuth` no longer invalidate `['dictionary']`; `SearchPage`, `SenseCard` and `MyWordsPage` use the neutral names, the inactive state and the retry message; MSW lookup is user-independent and a saved-state handler has the backend's 401/422 rules; fixtures use the neutral names and language fields. Tests: `SenseCard.test.tsx` (inactive state), `client.test.ts` (saved state, repeated parameter, 401/422, isolation), `App.test.tsx` (inactive until the saved state arrives, no request when signed out, retry state, no lookup or saved-state refetch on save/unsave).
+  - Docs: `docs/plan.md` (data model, Step 2 endpoints and web), `backend/intent.md` (sense id, language pair, cacheable lookup, V2 exception to the backward-compatible-migrations rule), `web/intent.md` (MSW and unsave mechanisms, lookup-then-saved-state).
 
 ## Tried and rejected
+- Phase 2 (ClaudeC-Opus5.5): keeping the web client's local short-circuit for an empty lookup. It would have needed the pair (`en`/`ru`) as a literal in production web code; the client now sends the empty query, and the backend (and the MSW handler) answer `200` with the pair and no lexemes. `useLookup` never asks for an empty query anyway.
+- Phase 2 (ClaudeC-Opus5.5): MSW `passthrough()` in `App.test.tsx` overrides to fall back to the default mock handler. In Node it goes to the real network; a resolver that returns nothing falls through to the next handler, which is what the tests use.
 - Filtering `GET /api/cards` by `sense_id` for saved state. Rejected by Alex, who prefers two separate endpoints.
 - Firing the lookup and the saved-state request together, keyed by the word (`?lemma=`). Rejected because a card's stored lemma may not match the provider's normalisation of the query, and Alex chose "lookup first, then saved state".
 - Recomputing the sense ids in SQL inside V2 to keep local cards (ClaudeC-Opus5.5). Rejected: Postgres `lower()` follows the collation and can differ from Java's `toLowerCase(Locale.ROOT)`, so ids could silently mismatch. Telling developers to recreate the database was also rejected, because a skipped doc step leaves stale rows.
@@ -144,16 +152,25 @@ Phase 2 (`implementation`) starts. The reviewer (ClaudeC-Fable) confirmed the co
   - The web's "retry state" (section 3.4) is a short inline message with a way to retry the saved-state request while the lookup stays visible; the exact wording and control are the implementer's choice.
   - `e2e/` holds only a README, so section 5's "if one exists by then" applies: no e2e work in this task unless `e2e-smoke` lands first.
 
+- Phase 2 implementation choices (ClaudeC-Opus5.5, 2026-11-19). None changes the agreed contract; each is open to challenge:
+  - **V2** adds the new `NOT NULL` language columns with a `DEFAULT` and drops the default in the same migration (the tables were just emptied), so no column keeps a language default and the services always set it, as section 1 says for `lexemes.source_lang`. The unique key is renamed to `lexemes_source_lang_lemma_pos_key`.
+  - **422 details** for the saved-state endpoint: `sense_id is required` (no parameter), `sense_id must be given 1 to 100 times` (`@Size`), `sense_id must not be blank` (`@NotBlank` on the elements). The MSW handler uses the same texts. `ApiExceptionHandler.handleMissingServletRequestParameter` uses the parameter name, so the message is generic.
+  - **Cache header values** come from Spring's `CacheControl.maxAge(...).cachePublic()`, which renders `max-age=3600, public` (order differs from the proposal's prose, same directives). The tests also check that `Pragma`, `Expires` and `Set-Cookie` are absent and that `Vary` names neither `Cookie` nor `Authorization`, signed in or out.
+  - **`SenseIdsTest` pins one id** (`fake`, en/ru, run, verb, бежать → `s_3746a995dfb8c96b1113`), so a later change to the hash input fails a test instead of silently orphaning saved cards. It also checks that the pair changes the id and that pair parts are separated.
+  - **Web saved-state cache:** `useSavedSenses(senseIds)` (in `hooks/useCards.ts`) keys the query `['saved', userId, senseIds]` and stores a map of every requested sense id to its card id or `null`. Save writes the new card id into every cached map that contains the sense; unsave (from Search or My Words) nulls every entry holding that card id, so the delete path needs no sense id. Both mutations still wait for `['cards']` to refetch before settling, so My Words never shows a removed card again for a moment. Sign-out removes `['saved']`; sign-in needs nothing because the key has the new user id.
+  - **While `/api/auth/me` is loading** the buttons are inactive too: the user isn't known yet, and showing an active "+" would briefly mislead a signed-in user. Signed-out users get the active "+" as soon as `me` answers 401.
+  - **Retry state:** the saved-state query retries once (`retry: 1`), then the page shows `Couldn't check which senses you have saved.` with a Retry button (`role="alert"`), the buttons stay inactive and the translation stays visible.
+  - **Inactive button:** disabled, slate, an ellipsis icon, accessible name "Checking saved state".
+  - **`docs/engineering.md` unchanged:** nothing in it names the renamed fields or describes the lookup's response or caching. The V2 exception is recorded in `backend/intent.md` next to the forward-only rule.
+
 ## Open questions
 - None. No `For Alex:` question was open at the phase 1 review.
 
 ## Next step
-Phase 2: implement the agreed proposal (`docs/api/proposals/feedback-amendments.md`) exactly. Work in this order; each item is done when its checks pass, and the task is done when every acceptance criterion in Goal holds.
-1. Backend: V2 migration, then provider records, entities, DTOs, fake data, the sense id (as agreed), the lookup without user state and with cache headers, and `GET /api/cards/saved`. Tests updated and added (section 4). Run `./gradlew check` (with `--rerun-tasks` when nothing else changed). Notes from the reviewer: no `@Validated` on `CardController` (section 2); the saved-state endpoint sets no cache header of its own; `CardApiTest`'s raw insert needs the two new language columns.
-2. Re-export `docs/api/openapi.json` (`./gradlew exportOpenApi`) and run `npm run gen:api` in `web/`, in the same commit as the backend contract change where possible (root `AGENTS.md`: spec and web client change together).
-3. Web: neutral names, the split requests, the inactive buttons, retry state and signed-out behaviour, the MSW handlers and fixtures, and the tests the acceptance criteria name. Run web lint, typecheck, tests and build.
-4. Docs from proposal section 5, including the V2 backward-compatibility exception in `backend/intent.md`.
-5. e2e: nothing to do unless `e2e/` has tests by then.
+Phase 2 items 1–5 are done (see Done). Nothing known is left. Next implementers: verify the implementation against the proposal and every acceptance criterion in Goal, re-run both projects' checks, and record agreement or findings. Useful checks:
+- `git grep -nE "translation_ru|synonyms_ru|meanings_en|translationRu|LANG_EN|\bsaved\b" -- backend/src web/src docs/api/openapi.json` should hit only `V1__...sql` and the saved-state code and tests.
+- The acceptance tests: `DictionaryApiTest` (cache headers, same response for every credential), `SavedSensesApiTest` (401/422, isolation), `App.test.tsx` (inactive until saved state, no request when signed out, retry state).
+- e2e: `e2e/` still holds only a README, so nothing to do there.
 
 ## Session log
 <!-- Append one line per session. Never rewrite earlier lines. -->
@@ -170,6 +187,7 @@ Phase 2: implement the agreed proposal (`docs/api/proposals/feedback-amendments.
 - 2026-11-18T13:15:00Z ClaudeC-Opus5.5: Cycle 2. Re-checked the proposal against the schema, controllers and web hooks. Found nothing left to change; recorded agreement, completing the streak (status ready-for-review). Web lint, typecheck, 28 tests and build pass; backend check not re-run (handoff-only change).
 - 2026-11-18T13:30:00Z ClaudeC-Fable: Phase 1 review. Confirmed the contract against F1–F3, the instructions, the code and the Spring sources; added four clarifications (no `@Validated`, default cache header on the saved-state endpoint, V2 backward-compatibility exception, `CardApiTest` raw SQL), marked the proposal agreed, and switched to phase 2 with the implementation list in Next step (status in-progress). Web checks and backend `./gradlew check --rerun-tasks` pass.
 - 2026-11-19T11:00:00Z ClaudeC-Fable: Finished the phase 1 review, which the previous session wrote but left uncommitted. Re-read the review edits against the proposal, re-verified the `@Validated` claim in `HandlerMethod.checkArguments` (spring-web 7.0.10 sources), and re-ran the checks: web lint, typecheck, 28 tests and build pass; backend `./gradlew check --rerun-tasks` passes (the portable Postgres was down again and needed `pg_ctl ... -w start`). No change to the review's content; committed it (status in-progress, phase implementation).
+- 2026-11-19T11:30:00Z ClaudeC-Opus5.5: Phase 2, round 1. Implemented the whole agreed proposal (backend, spec, generated client, web, MSW, section 5 docs) with no contract change; recorded the implementation choices under Decisions. Backend `./gradlew check --rerun-tasks` (69 tests) and web lint, typecheck, 34 tests and build pass with no warnings. Nothing known left (status ready-for-review).
 
 ## Outcome
 <!-- Filled in only when archiving. -->

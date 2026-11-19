@@ -1,8 +1,12 @@
-import { Check, Plus, Loader2 } from 'lucide-react';
+import { Check, Ellipsis, Plus, Loader2 } from 'lucide-react';
 import type { Sense } from '../api/types';
 
 interface SenseCardProps {
   sense: Sense;
+  /** The user's card for this sense, given exactly when the sense is saved; unsaving needs it. */
+  cardId?: string;
+  /** The saved state hasn't arrived (or failed): the button is inactive, neither '+' nor '✓'. */
+  isCheckingSaved?: boolean;
   onSave: (senseId: string) => void;
   onUnsave: (cardId: string) => void;
   isSaving?: boolean;
@@ -11,14 +15,14 @@ interface SenseCardProps {
 
 export function SenseCard({
   sense,
+  cardId,
+  isCheckingSaved = false,
   onSave,
   onUnsave,
   isSaving = false,
   isRemoving = false,
 }: SenseCardProps) {
-  // The API sends `card_id` exactly when the sense is saved; it is what unsaving needs.
-  const cardId = sense.card_id;
-  const isSaved = cardId !== undefined;
+  const isSaved = !isCheckingSaved && cardId !== undefined;
 
   return (
     <div
@@ -30,20 +34,20 @@ export function SenseCard({
     >
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
-          {/* Main Russian translation */}
+          {/* Main translation */}
           <div className="flex items-baseline gap-2 flex-wrap">
-            <h4 className="text-lg font-semibold text-slate-900">{sense.translation_ru}</h4>
-            {sense.synonyms_ru && sense.synonyms_ru.length > 0 && (
+            <h4 className="text-lg font-semibold text-slate-900">{sense.translation}</h4>
+            {sense.synonyms && sense.synonyms.length > 0 && (
               <span className="text-sm text-slate-500">
-                ({sense.synonyms_ru.join(', ')})
+                ({sense.synonyms.join(', ')})
               </span>
             )}
           </div>
 
-          {/* English definition / meaning */}
-          {sense.meanings_en && sense.meanings_en.length > 0 && (
+          {/* Definition / meaning, in the source language */}
+          {sense.meanings && sense.meanings.length > 0 && (
             <p className="mt-1 text-sm text-slate-600 italic">
-              {sense.meanings_en.join('; ')}
+              {sense.meanings.join('; ')}
             </p>
           )}
 
@@ -52,17 +56,27 @@ export function SenseCard({
             <div className="mt-3 space-y-1.5 pl-3 border-l-2 border-indigo-200">
               {sense.examples.map((ex, idx) => (
                 <div key={idx} className="text-sm">
-                  <p className="text-slate-800 font-medium">{ex.en}</p>
-                  <p className="text-slate-500 text-xs mt-0.5">{ex.ru}</p>
+                  <p className="text-slate-800 font-medium">{ex.text}</p>
+                  <p className="text-slate-500 text-xs mt-0.5">{ex.translation}</p>
                 </div>
               ))}
             </div>
           )}
         </div>
 
-        {/* Action button: '+' saves, '✓' unsaves */}
+        {/* Action button: '+' saves, '✓' unsaves; inactive until the saved state is known */}
         <div>
-          {isSaved ? (
+          {isCheckingSaved ? (
+            <button
+              type="button"
+              disabled
+              aria-label="Checking saved state"
+              title="Checking saved state"
+              className="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed"
+            >
+              <Ellipsis className="w-4 h-4" />
+            </button>
+          ) : cardId !== undefined ? (
             <button
               type="button"
               onClick={() => onUnsave(cardId)}

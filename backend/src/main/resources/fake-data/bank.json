@@ -5,33 +5,33 @@
     "transcription": "bæŋk",
     "senses": [
       {
-        "translation_ru": "банк",
-        "synonyms_ru": [
+        "translation": "банк",
+        "synonyms": [
           "финансовое учреждение"
         ],
-        "meanings_en": [
+        "meanings": [
           "a financial institution licensed to receive deposits and make loans"
         ],
         "examples": [
           {
-            "en": "I went to the bank to open a savings account.",
-            "ru": "Я пошёл в банк, чтобы открыть сберегательный счёт."
+            "text": "I went to the bank to open a savings account.",
+            "translation": "Я пошёл в банк, чтобы открыть сберегательный счёт."
           }
         ]
       },
       {
-        "translation_ru": "берег",
-        "synonyms_ru": [
+        "translation": "берег",
+        "synonyms": [
           "набережная",
           "склон"
         ],
-        "meanings_en": [
+        "meanings": [
           "the land along the edge of a river or lake"
         ],
         "examples": [
           {
-            "en": "They set up camp on the grassy bank of the river.",
-            "ru": "Они разбили лагерь на травянистом берегу реки."
+            "text": "They set up camp on the grassy bank of the river.",
+            "translation": "Они разбили лагерь на травянистом берегу реки."
           }
         ]
       }
@@ -43,17 +43,17 @@
     "transcription": "bæŋk",
     "senses": [
       {
-        "translation_ru": "рассчитывать",
-        "synonyms_ru": [
+        "translation": "рассчитывать",
+        "synonyms": [
           "полагаться"
         ],
-        "meanings_en": [
+        "meanings": [
           "rely on or count on with confidence"
         ],
         "examples": [
           {
-            "en": "You can bank on his support when you need it most.",
-            "ru": "Ты можешь рассчитывать на его поддержку, когда она нужнее всего."
+            "text": "You can bank on his support when you need it most.",
+            "translation": "Ты можешь рассчитывать на его поддержку, когда она нужнее всего."
           }
         ]
       }

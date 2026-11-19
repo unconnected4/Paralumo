@@ -1,6 +1,10 @@
 import { http, HttpResponse } from 'msw';
-import type { Card, Lexeme, Sense, User } from '../api/types';
+import type { Card, Lexeme, SavedSense, Sense, User } from '../api/types';
 import { MOCK_DICTIONARY_FIXTURES } from './fixtures';
+
+// The one language pair the fixtures cover, like the backend's fake provider.
+const SOURCE_LANG = 'en';
+const TARGET_LANG = 'ru';
 
 // In-memory state for mock sessions and card saves
 const initialUser = (): User => ({
@@ -12,16 +16,18 @@ const initialCards = (): Card[] => [
   {
     id: 'card_mock_1',
     sense_id: 'sense_run_v_1',
+    source_lang: SOURCE_LANG,
+    target_lang: TARGET_LANG,
     lemma: 'run',
     pos: 'verb',
     transcription: 'rʌn',
-    translation_ru: 'бежать',
-    synonyms_ru: ['мчаться', 'нестись'],
-    meanings_en: ['move at a speed faster than a walk'],
+    translation: 'бежать',
+    synonyms: ['мчаться', 'нестись'],
+    meanings: ['move at a speed faster than a walk'],
     examples: [
       {
-        en: 'She runs five miles every morning along the coast.',
-        ru: 'Она бегает пять миль каждое утро вдоль побережья.',
+        text: 'She runs five miles every morning along the coast.',
+        translation: 'Она бегает пять миль каждое утро вдоль побережья.',
       },
     ],
     created_at: new Date(Date.now() - 86400000).toISOString(),
@@ -102,15 +108,14 @@ function utf8ByteLength(value: string): number {
 }
 
 export const handlers = [
-  // 1. Dictionary Lookup
+  // 1. Dictionary Lookup: the same for every user, like the backend; saved state is handler 2.
   http.get('/api/dictionary/lookup', ({ request }) => {
     const url = new URL(request.url);
     const q = url.searchParams.get('q')?.toLowerCase().trim() || '';
 
     if (!q) {
-      // The backend deliberately makes an empty search a successful empty result. The generated
-      // client short-circuits this case, but direct callers of the mock must see the same contract.
-      return HttpResponse.json({ query: '', lexemes: [] });
+      // The backend deliberately makes an empty search a successful empty result.
+      return HttpResponse.json({ query: '', source_lang: SOURCE_LANG, target_lang: TARGET_LANG, lexemes: [] });
     }
 
     const fixture = MOCK_DICTIONARY_FIXTURES[q];
@@ -118,26 +123,37 @@ export const handlers = [
       return problem(404, `Word "${q}" not found`);
     }
 
-    // Dynamic overlay for the saved state (P12): `saved`, plus `card_id` exactly when saved.
-    // Saved is per-user, so nothing is saved when signed out.
-    const userCards = currentUser ? getCardsForUser(currentUser.id) : [];
-    const cardIdBySenseId = new Map(userCards.map((c) => [c.sense_id, c.id]));
-
-    const overlaidLexemes: Lexeme[] = fixture.map((lex) => ({
-      ...lex,
-      senses: lex.senses.map((s) => {
-        const cardId = cardIdBySenseId.get(s.id);
-        return { ...s, saved: cardId !== undefined, card_id: cardId };
-      }),
-    }));
-
     return HttpResponse.json({
       query: q,
-      lexemes: overlaidLexemes,
+      source_lang: SOURCE_LANG,
+      target_lang: TARGET_LANG,
+      lexemes: fixture,
     });
   }),
 
-  // 2. List Cards
+  // 2. Saved state of a lookup's senses for the signed-in user
+  http.get('/api/cards/saved', ({ request }) => {
+    if (!currentUser) {
+      return problem(401, 'Authentication required');
+    }
+    const senseIds = new URL(request.url).searchParams.getAll('sense_id');
+    if (senseIds.length === 0) {
+      return problem(422, 'sense_id is required');
+    }
+    if (senseIds.length > 100) {
+      return problem(422, 'sense_id must be given 1 to 100 times');
+    }
+    if (senseIds.some((id) => !id.trim())) {
+      return problem(422, 'sense_id must not be blank');
+    }
+    const requested = new Set(senseIds);
+    const saved: SavedSense[] = getCardsForUser(currentUser.id)
+      .filter((card) => requested.has(card.sense_id))
+      .map((card) => ({ sense_id: card.sense_id, card_id: card.id }));
+    return HttpResponse.json(saved);
+  }),
+
+  // 3. List Cards
   http.get('/api/cards', () => {
     if (!currentUser) {
       return problem(401, 'Authentication required');
@@ -145,7 +161,7 @@ export const handlers = [
     return HttpResponse.json(getCardsForUser(currentUser.id));
   }),
 
-  // 3. Save Card
+  // 4. Save Card
   http.post('/api/cards', async ({ request }) => {
     if (!currentUser) {
       return problem(401, 'Authentication required');
@@ -174,12 +190,14 @@ export const handlers = [
     const newCard: Card = {
       id: `card_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
       sense_id: match.sense.id,
+      source_lang: match.lexeme.source_lang,
+      target_lang: match.sense.target_lang,
       lemma: match.lexeme.lemma,
       pos: match.lexeme.pos,
       transcription: match.lexeme.transcription,
-      translation_ru: match.sense.translation_ru,
-      synonyms_ru: match.sense.synonyms_ru,
-      meanings_en: match.sense.meanings_en,
+      translation: match.sense.translation,
+      synonyms: match.sense.synonyms,
+      meanings: match.sense.meanings,
       examples: match.sense.examples,
       created_at: new Date().toISOString(),
     };
@@ -188,7 +206,7 @@ export const handlers = [
     return HttpResponse.json(newCard, { status: 201 });
   }),
 
-  // 4. Delete Card
+  // 5. Delete Card
   http.delete('/api/cards/:id', ({ params }) => {
     if (!currentUser) {
       return problem(401, 'Authentication required');
@@ -205,7 +223,7 @@ export const handlers = [
     return problem(404, 'Card not found');
   }),
 
-  // 5. Auth: Me
+  // 6. Auth: Me
   http.get('/api/auth/me', () => {
     if (!currentUser) {
       return problem(401, 'Not authenticated');
@@ -213,7 +231,7 @@ export const handlers = [
     return HttpResponse.json(currentUser);
   }),
 
-  // 6. Auth: Login
+  // 7. Auth: Login
   http.post('/api/auth/login', async ({ request }) => {
     const body = await readJsonObject(request);
     if (!body) {
@@ -243,7 +261,7 @@ export const handlers = [
     return HttpResponse.json(currentUser);
   }),
 
-  // 7. Auth: Register
+  // 8. Auth: Register
   http.post('/api/auth/register', async ({ request }) => {
     const body = await readJsonObject(request);
     if (!body) {
@@ -281,7 +299,7 @@ export const handlers = [
     return HttpResponse.json(currentUser, { status: 201 });
   }),
 
-  // 8. Auth: Logout
+  // 9. Auth: Logout
   http.post('/api/auth/logout', () => {
     currentUser = null;
     return new HttpResponse(null, { status: 204 });

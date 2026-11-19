@@ -1,6 +1,6 @@
 import createClient from 'openapi-fetch';
 import type { paths } from './schema';
-import type { Card, LookupResponse, User } from './types';
+import type { Card, LookupResponse, SavedSense, User } from './types';
 
 // Requests are typed against the generated spec (./schema.d.ts, `npm run gen:api`).
 const api = createClient<paths>({
@@ -42,12 +42,14 @@ async function unwrap<T>(request: Promise<{ data?: T; error?: unknown; response:
   return data as T;
 }
 
+// An empty query is still sent: the backend answers it with no lexemes and the language pair.
 export async function lookup(q: string): Promise<LookupResponse> {
-  const trimmed = q.trim();
-  if (!trimmed) {
-    return { query: '', lexemes: [] };
-  }
-  return unwrap(api.GET('/api/dictionary/lookup', { params: { query: { q: trimmed } } }));
+  return unwrap(api.GET('/api/dictionary/lookup', { params: { query: { q: q.trim() } } }));
+}
+
+/** Which of the given senses the signed-in user has saved; senses that aren't saved are left out. */
+export async function listSavedSenses(senseIds: string[]): Promise<SavedSense[]> {
+  return unwrap(api.GET('/api/cards/saved', { params: { query: { sense_id: senseIds } } }));
 }
 
 export async function listCards(): Promise<Card[]> {

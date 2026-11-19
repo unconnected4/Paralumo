@@ -6,11 +6,11 @@ import type { Sense } from '../api/types';
 describe('SenseCard', () => {
   const sampleSense: Sense = {
     id: 'sense_test_1',
-    translation_ru: 'бежать',
-    synonyms_ru: ['мчаться', 'нестись'],
-    meanings_en: ['move fast using legs'],
-    examples: [{ en: 'She runs every morning.', ru: 'Она бегает каждое утро.' }],
-    saved: false,
+    target_lang: 'ru',
+    translation: 'бежать',
+    synonyms: ['мчаться', 'нестись'],
+    meanings: ['move fast using legs'],
+    examples: [{ text: 'She runs every morning.', translation: 'Она бегает каждое утро.' }],
   };
 
   it('renders translation, synonyms, meanings, and examples', () => {
@@ -34,12 +34,12 @@ describe('SenseCard', () => {
     expect(handleSave).toHaveBeenCalledWith('sense_test_1');
   });
 
-  const savedSense: Sense = { ...sampleSense, saved: true, card_id: 'card_test_1' };
-
   it('renders a Saved button when the sense is saved and unsaves its card on click', () => {
     const handleSave = vi.fn();
     const handleUnsave = vi.fn();
-    render(<SenseCard sense={savedSense} onSave={handleSave} onUnsave={handleUnsave} />);
+    render(
+      <SenseCard sense={sampleSense} cardId="card_test_1" onSave={handleSave} onUnsave={handleUnsave} />
+    );
 
     expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument();
 
@@ -49,8 +49,33 @@ describe('SenseCard', () => {
   });
 
   it('disables the button while the card is being removed', () => {
-    render(<SenseCard sense={savedSense} onSave={vi.fn()} onUnsave={vi.fn()} isRemoving />);
+    render(
+      <SenseCard sense={sampleSense} cardId="card_test_1" onSave={vi.fn()} onUnsave={vi.fn()} isRemoving />
+    );
 
     expect(screen.getByRole('button', { name: 'Removing...' })).toBeDisabled();
+  });
+
+  it('shows an inactive button, neither Save nor Saved, while the saved state is being checked', () => {
+    const handleSave = vi.fn();
+    const handleUnsave = vi.fn();
+    render(
+      <SenseCard
+        sense={sampleSense}
+        cardId="card_test_1"
+        isCheckingSaved
+        onSave={handleSave}
+        onUnsave={handleUnsave}
+      />
+    );
+
+    const button = screen.getByRole('button', { name: 'Checking saved state' });
+    expect(button).toBeDisabled();
+    expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Saved' })).not.toBeInTheDocument();
+
+    fireEvent.click(button);
+    expect(handleSave).not.toHaveBeenCalled();
+    expect(handleUnsave).not.toHaveBeenCalled();
   });
 });

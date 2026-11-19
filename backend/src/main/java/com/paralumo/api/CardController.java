@@ -3,6 +3,7 @@ package com.paralumo.api;
 import com.paralumo.api.Dtos.CardDto;
 import com.paralumo.api.Dtos.ExampleSentenceDto;
 import com.paralumo.api.Dtos.SaveCardRequest;
+import com.paralumo.api.Dtos.SavedSenseDto;
 import com.paralumo.config.CurrentUser;
 import com.paralumo.persistence.CardEntity;
 import com.paralumo.service.CardService;
@@ -11,6 +12,8 @@ import com.paralumo.service.NotFoundException;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -24,10 +27,17 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
-/** The signed-in user's saved cards. Every route needs a session (401 otherwise). */
+/**
+ * The signed-in user's saved cards. Every route needs a session (401 otherwise).
+ *
+ * <p>No {@code @Validated} on the class: Spring's built-in method validation checks the parameter
+ * constraints only on controllers without it, and its {@code HandlerMethodValidationException} is
+ * what {@link ApiExceptionHandler} turns into 422.
+ */
 @RestController
 @RequestMapping(path = "/api/cards", produces = MediaType.APPLICATION_JSON_VALUE)
 class CardController {
@@ -44,6 +54,26 @@ class CardController {
   @GetMapping
   List<CardDto> list(@AuthenticationPrincipal CurrentUser user) {
     return cardService.list(user.id()).stream().map(CardController::toDto).toList();
+  }
+
+  @Operation(
+      operationId = "listSavedSenses",
+      summary = "Which of the given senses the user has saved",
+      description =
+          "One entry per saved sense, in no particular order; senses that aren't saved, including"
+              + " unknown ones, are left out. Pass the sense ids of a lookup.")
+  @ApiResponse(responseCode = "200", description = "The saved senses with their cards")
+  @ApiResponse(responseCode = "401", description = "Not signed in")
+  @ApiResponse(responseCode = "422", description = "No sense_id, more than 100, or a blank one")
+  @GetMapping("/saved")
+  List<SavedSenseDto> saved(
+      @AuthenticationPrincipal CurrentUser user,
+      @RequestParam("sense_id")
+          @Size(min = 1, max = 100, message = "sense_id must be given 1 to 100 times")
+          List<@NotBlank(message = "sense_id must not be blank") String> senseIds) {
+    return cardService.savedCardIds(user.id(), senseIds).entrySet().stream()
+        .map(saved -> new SavedSenseDto(saved.getKey(), saved.getValue().toString()))
+        .toList();
   }
 
   @Operation(
@@ -89,13 +119,17 @@ class CardController {
     return new CardDto(
         card.getId().toString(),
         card.getSenseKey(),
+        card.getSourceLang(),
+        card.getTargetLang(),
         card.getLemma(),
         card.getPos(),
         card.getTranscription(),
-        card.getTranslationRu(),
-        card.getSynonymsRu(),
-        card.getMeaningsEn(),
-        card.getExamples().stream().map(e -> new ExampleSentenceDto(e.en(), e.ru())).toList(),
+        card.getTranslation(),
+        card.getSynonyms(),
+        card.getMeanings(),
+        card.getExamples().stream()
+            .map(e -> new ExampleSentenceDto(e.text(), e.translation()))
+            .toList(),
         card.getCreatedAt(),
         card.getNotes());
   }

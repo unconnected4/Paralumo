@@ -2,6 +2,7 @@ package com.paralumo.provider.fake;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.paralumo.provider.LanguagePair;
 import com.paralumo.provider.ProviderLexeme;
 import com.paralumo.provider.ProviderSense;
 import com.paralumo.provider.SenseIds;
@@ -28,11 +29,23 @@ class FakeDictionaryProviderTest {
     assertThat(verb.lemma()).isEqualTo("run");
     assertThat(verb.transcription()).isEqualTo("rʌn");
     ProviderSense first = verb.senses().getFirst();
-    assertThat(first.translationRu()).isEqualTo("бежать");
-    assertThat(first.synonymsRu()).containsExactly("мчаться", "нестись");
-    assertThat(first.meaningsEn()).containsExactly("move at a speed faster than a walk");
-    assertThat(first.examples()).singleElement().satisfies(e -> assertThat(e.ru()).isNotBlank());
-    assertThat(first.id()).isEqualTo(SenseIds.of("fake", "run", "verb", "бежать"));
+    assertThat(first.translation()).isEqualTo("бежать");
+    assertThat(first.synonyms()).containsExactly("мчаться", "нестись");
+    assertThat(first.meanings()).containsExactly("move at a speed faster than a walk");
+    assertThat(first.examples())
+        .singleElement()
+        .satisfies(
+            e -> {
+              assertThat(e.text()).isNotBlank();
+              assertThat(e.translation()).isNotBlank();
+            });
+    assertThat(first.id())
+        .isEqualTo(SenseIds.of("fake", new LanguagePair("en", "ru"), "run", "verb", "бежать"));
+  }
+
+  @Test
+  void reportsItsLanguagePair() {
+    assertThat(provider.pair()).isEqualTo(new LanguagePair("en", "ru"));
   }
 
   @Test

@@ -5,18 +5,18 @@
     "transcription": "laɪt",
     "senses": [
       {
-        "translation_ru": "свет",
-        "synonyms_ru": [
+        "translation": "свет",
+        "synonyms": [
           "освещение",
           "сияние"
         ],
-        "meanings_en": [
+        "meanings": [
           "the natural agent that stimulates sight and makes things visible"
         ],
         "examples": [
           {
-            "en": "Morning light began to filter through the trees.",
-            "ru": "Утренний свет начал пробиваться сквозь деревья."
+            "text": "Morning light began to filter through the trees.",
+            "translation": "Утренний свет начал пробиваться сквозь деревья."
           }
         ]
       }
@@ -28,34 +28,34 @@
     "transcription": "laɪt",
     "senses": [
       {
-        "translation_ru": "лёгкий",
-        "synonyms_ru": [
+        "translation": "лёгкий",
+        "synonyms": [
           "невесомый",
           "нетяжёлый"
         ],
-        "meanings_en": [
+        "meanings": [
           "of little weight; not heavy"
         ],
         "examples": [
           {
-            "en": "This carbon-fiber bicycle is remarkably light.",
-            "ru": "Этот велосипед из углеродного волокна удивительно лёгкий."
+            "text": "This carbon-fiber bicycle is remarkably light.",
+            "translation": "Этот велосипед из углеродного волокна удивительно лёгкий."
           }
         ]
       },
       {
-        "translation_ru": "светлый",
-        "synonyms_ru": [
+        "translation": "светлый",
+        "synonyms": [
           "ясный",
           "яркий"
         ],
-        "meanings_en": [
+        "meanings": [
           "having a considerable amount of natural or artificial illumination"
         ],
         "examples": [
           {
-            "en": "The studio apartment was bright, light, and airy.",
-            "ru": "Квартира-студия была светлой, яркой и просторной."
+            "text": "The studio apartment was bright, light, and airy.",
+            "translation": "Квартира-студия была светлой, яркой и просторной."
           }
         ]
       }

@@ -19,8 +19,8 @@ public class LexemeEntity {
   @Column(nullable = false)
   private String lemma;
 
-  @Column(nullable = false)
-  private String lang;
+  @Column(name = "source_lang", nullable = false)
+  private String sourceLang;
 
   @Column(nullable = false)
   private String pos;
@@ -30,9 +30,9 @@ public class LexemeEntity {
   @SuppressWarnings("NullAway.Init") // populated by JPA
   protected LexemeEntity() {}
 
-  public LexemeEntity(String lemma, String lang, String pos, @Nullable String transcription) {
+  public LexemeEntity(String lemma, String sourceLang, String pos, @Nullable String transcription) {
     this.lemma = lemma;
-    this.lang = lang;
+    this.sourceLang = sourceLang;
     this.pos = pos;
     this.transcription = transcription;
   }
@@ -43,6 +43,10 @@ public class LexemeEntity {
 
   public String getLemma() {
     return lemma;
+  }
+
+  public String getSourceLang() {
+    return sourceLang;
   }
 
   public String getPos() {

@@ -1,6 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { getMe, login, logout, register, type User } from '../api';
 
+// Lookups don't depend on the user, so signing in or out leaves them cached. Saved state is keyed
+// by user (useSavedSenses), and signing out drops it.
 export function useAuth() {
   const queryClient = useQueryClient();
 
@@ -15,7 +17,6 @@ export function useAuth() {
     onSuccess: (user) => {
       queryClient.setQueryData(['auth', 'me'], user);
       queryClient.invalidateQueries({ queryKey: ['cards'] });
-      queryClient.invalidateQueries({ queryKey: ['dictionary'] });
     },
   });
 
@@ -24,7 +25,6 @@ export function useAuth() {
     onSuccess: (user) => {
       queryClient.setQueryData(['auth', 'me'], user);
       queryClient.invalidateQueries({ queryKey: ['cards'] });
-      queryClient.invalidateQueries({ queryKey: ['dictionary'] });
     },
   });
 
@@ -32,8 +32,8 @@ export function useAuth() {
     mutationFn: logout,
     onSuccess: () => {
       queryClient.setQueryData(['auth', 'me'], null);
+      queryClient.removeQueries({ queryKey: ['saved'] });
       queryClient.invalidateQueries({ queryKey: ['cards'] });
-      queryClient.invalidateQueries({ queryKey: ['dictionary'] });
     },
   });
 

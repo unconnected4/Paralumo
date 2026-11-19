@@ -5,6 +5,7 @@ import com.paralumo.persistence.LexemeEntity;
 import com.paralumo.persistence.LexemeRepository;
 import com.paralumo.persistence.SenseEntity;
 import com.paralumo.persistence.SenseRepository;
+import com.paralumo.provider.LanguagePair;
 import com.paralumo.provider.ProviderLexeme;
 import com.paralumo.provider.ProviderSense;
 import java.util.List;
@@ -19,8 +20,6 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 class SenseCatalog {
 
-  private static final String LANG_EN = "en";
-
   private final LexemeRepository lexemes;
   private final SenseRepository senses;
 
@@ -30,27 +29,32 @@ class SenseCatalog {
   }
 
   @Transactional
-  public void record(String source, List<ProviderLexeme> found) {
+  public void record(String source, LanguagePair pair, List<ProviderLexeme> found) {
     for (ProviderLexeme lexeme : found) {
       LexemeEntity lexemeRow =
           lexemes
-              .findByLemmaAndPos(lexeme.lemma(), lexeme.pos())
+              .findBySourceLangAndLemmaAndPos(pair.source(), lexeme.lemma(), lexeme.pos())
               .orElseGet(
                   () ->
                       lexemes.save(
                           new LexemeEntity(
-                              lexeme.lemma(), LANG_EN, lexeme.pos(), lexeme.transcription())));
+                              lexeme.lemma(),
+                              pair.source(),
+                              lexeme.pos(),
+                              lexeme.transcription())));
       lexemeRow.setTranscription(lexeme.transcription());
       for (ProviderSense sense : lexeme.senses()) {
         SenseEntity senseRow =
             senses
                 .findBySourceKey(sense.id())
-                .orElseGet(() -> senses.save(new SenseEntity(lexemeRow, source, sense.id())));
+                .orElseGet(
+                    () ->
+                        senses.save(new SenseEntity(lexemeRow, source, sense.id(), pair.target())));
         senseRow.update(
-            sense.translationRu(),
-            sense.synonymsRu(),
-            sense.meaningsEn(),
-            sense.examples().stream().map(e -> new Example(e.en(), e.ru())).toList());
+            sense.translation(),
+            sense.synonyms(),
+            sense.meanings(),
+            sense.examples().stream().map(e -> new Example(e.text(), e.translation())).toList());
       }
     }
   }

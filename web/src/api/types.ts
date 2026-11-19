@@ -8,5 +8,6 @@ export type ExampleSentence = Schemas['ExampleSentence'];
 export type Sense = Schemas['Sense'];
 export type Lexeme = Schemas['Lexeme'];
 export type LookupResponse = Schemas['LookupResponse'];
+export type SavedSense = Schemas['SavedSense'];
 export type Card = Schemas['Card'];
 export type User = Schemas['User'];

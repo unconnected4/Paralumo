@@ -32,16 +32,19 @@ public class SenseEntity {
   @Column(name = "source_key", nullable = false)
   private String sourceKey;
 
-  @Column(name = "translation_ru", nullable = false)
-  private String translationRu;
+  @Column(name = "target_lang", nullable = false)
+  private String targetLang;
+
+  @Column(nullable = false)
+  private String translation;
 
   @JdbcTypeCode(SqlTypes.ARRAY)
-  @Column(name = "synonyms_ru", nullable = false)
-  private List<String> synonymsRu;
+  @Column(nullable = false)
+  private List<String> synonyms;
 
   @JdbcTypeCode(SqlTypes.ARRAY)
-  @Column(name = "meanings_en", nullable = false)
-  private List<String> meaningsEn;
+  @Column(nullable = false)
+  private List<String> meanings;
 
   @JdbcTypeCode(SqlTypes.JSON)
   @Column(nullable = false)
@@ -50,25 +53,23 @@ public class SenseEntity {
   @SuppressWarnings("NullAway.Init") // populated by JPA
   protected SenseEntity() {}
 
-  public SenseEntity(LexemeEntity lexeme, String source, String sourceKey) {
+  public SenseEntity(LexemeEntity lexeme, String source, String sourceKey, String targetLang) {
     this.lexeme = lexeme;
     this.source = source;
     this.sourceKey = sourceKey;
-    this.translationRu = "";
-    this.synonymsRu = List.of();
-    this.meaningsEn = List.of();
+    this.targetLang = targetLang;
+    this.translation = "";
+    this.synonyms = List.of();
+    this.meanings = List.of();
     this.examples = List.of();
   }
 
   /** Replaces the sense data with what the provider returned most recently. */
   public void update(
-      String translationRu,
-      List<String> synonymsRu,
-      List<String> meaningsEn,
-      List<Example> examples) {
-    this.translationRu = translationRu;
-    this.synonymsRu = List.copyOf(synonymsRu);
-    this.meaningsEn = List.copyOf(meaningsEn);
+      String translation, List<String> synonyms, List<String> meanings, List<Example> examples) {
+    this.translation = translation;
+    this.synonyms = List.copyOf(synonyms);
+    this.meanings = List.copyOf(meanings);
     this.examples = List.copyOf(examples);
   }
 
@@ -88,16 +89,20 @@ public class SenseEntity {
     return sourceKey;
   }
 
-  public String getTranslationRu() {
-    return translationRu;
+  public String getTargetLang() {
+    return targetLang;
   }
 
-  public List<String> getSynonymsRu() {
-    return synonymsRu;
+  public String getTranslation() {
+    return translation;
   }
 
-  public List<String> getMeaningsEn() {
-    return meaningsEn;
+  public List<String> getSynonyms() {
+    return synonyms;
+  }
+
+  public List<String> getMeanings() {
+    return meanings;
   }
 
   public List<Example> getExamples() {

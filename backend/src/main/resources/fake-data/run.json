@@ -5,49 +5,49 @@
     "transcription": "rʌn",
     "senses": [
       {
-        "translation_ru": "бежать",
-        "synonyms_ru": [
+        "translation": "бежать",
+        "synonyms": [
           "мчаться",
           "нестись"
         ],
-        "meanings_en": [
+        "meanings": [
           "move at a speed faster than a walk"
         ],
         "examples": [
           {
-            "en": "She runs five miles every morning along the coast.",
-            "ru": "Она бегает пять миль каждое утро вдоль побережья."
+            "text": "She runs five miles every morning along the coast.",
+            "translation": "Она бегает пять миль каждое утро вдоль побережья."
           }
         ]
       },
       {
-        "translation_ru": "управлять",
-        "synonyms_ru": [
+        "translation": "управлять",
+        "synonyms": [
           "руководить",
           "вести"
         ],
-        "meanings_en": [
+        "meanings": [
           "be in charge of; manage or organize"
         ],
         "examples": [
           {
-            "en": "He runs a small independent bakery in the town center.",
-            "ru": "Он управляет небольшой независимой пекарней в центре города."
+            "text": "He runs a small independent bakery in the town center.",
+            "translation": "Он управляет небольшой независимой пекарней в центре города."
           }
         ]
       },
       {
-        "translation_ru": "работать",
-        "synonyms_ru": [
+        "translation": "работать",
+        "synonyms": [
           "функционировать"
         ],
-        "meanings_en": [
+        "meanings": [
           "function or operate continuously"
         ],
         "examples": [
           {
-            "en": "The engine is running quietly and smoothly.",
-            "ru": "Двигатель работает тихо и плавно."
+            "text": "The engine is running quietly and smoothly.",
+            "translation": "Двигатель работает тихо и плавно."
           }
         ]
       }
@@ -59,32 +59,32 @@
     "transcription": "rʌn",
     "senses": [
       {
-        "translation_ru": "пробежка",
-        "synonyms_ru": [
+        "translation": "пробежка",
+        "synonyms": [
           "бег"
         ],
-        "meanings_en": [
+        "meanings": [
           "an act or spell of running for exercise"
         ],
         "examples": [
           {
-            "en": "I went for a 5-kilometer run in the park before breakfast.",
-            "ru": "Я вышел на 5-километровую пробежку в парке перед завтраком."
+            "text": "I went for a 5-kilometer run in the park before breakfast.",
+            "translation": "Я вышел на 5-километровую пробежку в парке перед завтраком."
           }
         ]
       },
       {
-        "translation_ru": "полоса",
-        "synonyms_ru": [
+        "translation": "полоса",
+        "synonyms": [
           "серия"
         ],
-        "meanings_en": [
+        "meanings": [
           "a continuous sequence or streak"
         ],
         "examples": [
           {
-            "en": "The football team enjoyed a magnificent run of six consecutive victories.",
-            "ru": "Футбольная команда наслаждалась великолепной серией из шести побед подряд."
+            "text": "The football team enjoyed a magnificent run of six consecutive victories.",
+            "translation": "Футбольная команда наслаждалась великолепной серией из шести побед подряд."
           }
         ]
       }
