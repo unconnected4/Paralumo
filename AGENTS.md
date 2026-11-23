@@ -10,6 +10,7 @@ Vocabulary app: dictionary lookup with per-sense saving and spaced-repetition pr
 - `e2e/`: Playwright tests that run against web and backend together
 - `docs/`: shared docs covering the plan, engineering conventions, API contract and decisions. Agent chaining: [docs/orchestration.md](docs/orchestration.md)
 - `scripts/orchestrate/`: driver that runs agents in an implement/review loop. How and why: [docs/orchestration.md](docs/orchestration.md)
+- `scripts/orchestrate/console/`: Alex's Java learning project. Ignore it unless Alex explicitly asks: [its AGENTS.md](scripts/orchestrate/console/AGENTS.md)
 - `docker-compose.yml`: local infrastructure only (Postgres)
 - `.github/workflows/`: one pipeline per project, filtered by path
 
