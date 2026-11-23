@@ -4,7 +4,7 @@
   "configurations": [
     {
       "type": "java",
-      "name": "OrchestartionApplication",
+      "name": "Orchestartion Application",
       "request": "launch",
       "mainClass": "orchestartion.OrchestartionApplication",
       "projectName": ""
