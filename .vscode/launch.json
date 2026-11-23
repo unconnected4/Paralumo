@@ -3,10 +3,20 @@
   "version": "0.2.0",
   "configurations": [
     {
-      // Runs from backend/ so Spring Boot imports backend/.env (spring.config.import is relative
-      // to the working directory). envFile covers the Run/Debug code lens, which may pick this
-      // config by main class. No projectName: the Java extension may name the project "backend"
-      // or "paralumo-backend", and there is only one main class.
+      "type": "java",
+      "name": "OrchestartionApplication",
+      "request": "launch",
+      "mainClass": "orchestration.OrchestartionApplication",
+      "projectName": ""
+    },
+    {
+      "type": "java",
+      "name": "OrchestartionApplication",
+      "request": "launch",
+      "mainClass": "orchestartion.OrchestartionApplication",
+      "projectName": ""
+    },
+    {
       "type": "java",
       "name": "Backend: API",
       "request": "launch",
