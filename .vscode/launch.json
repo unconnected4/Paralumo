@@ -4,10 +4,11 @@
   "configurations": [
     {
       "type": "java",
-      "name": "Orchestartion Application",
+      "name": "Orchestration Application",
       "request": "launch",
-      "mainClass": "orchestartion.OrchestartionApplication",
-      "projectName": ""
+      "mainClass": "orchestration.OrchestrationApplication",
+      "projectName": "",
+      "cwd": "${workspaceFolder}/scripts/orchestrate/console"
     },
     {
       "type": "java",
